@@ -161,7 +161,7 @@ with col1:
 with col2:
     st.metric("Tº Mín. Absoluta", f"{val_tmin:.1f} °C" if pd.notnull(val_tmin) else "N/D", delta=f"Ocurrió el {fecha_tmin}", delta_color="off")
 with col3:
-    st.metric("Año Más Lluvioso", str_anio, delta=str_precip, delta_color="off")
+    st.metric("Año con Mayor Precipitación", str_anio, delta=str_precip, delta_color="off")
 with col4:
     st.metric("Cantidad de Registros", f"{cant_datos:,} días")
 
@@ -371,7 +371,7 @@ with tab4:
                     "Precip. Acumulada (mm)": round(group['precip'].sum(), 1),
                     "Máxima en 24h (mm)": v_pmax,
                     "Fecha Máx. 24h": f_pmax,
-                    "Días Lluviosos (>0.1mm)": int((group['precip'] > 0.1).sum()),
+                    "Días con Precipitación (>0.1mm)": int((group['precip'] > 0.1).sum()),
                     "Cantidad de Datos": len(group)
                 })
                 
