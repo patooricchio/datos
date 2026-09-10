@@ -1,25 +1,57 @@
 import os
 import re
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 
 st.set_page_config(
     page_title="Visor Climatológico - Argentina", page_icon="🌤️", layout="wide"
 )
 
-# CSS personalizado para métricas
+# Estilos CSS personalizados para Tarjetas KPI
 st.markdown(
     """
 <style>
-    div[data-testid="stMetricValue"] > div { font-size: 1.4rem !important; }
-    div[data-testid="stMetricLabel"] > label { font-size: 0.85rem !important; }
-    div[data-testid="stMetricDelta"] { font-size: 0.75rem !important; }
+    .kpi-card {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        border-left: 5px solid #007bff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 10px;
+    }
+    .kpi-title {
+        font-size: 0.85rem;
+        color: #6c757d;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .kpi-value {
+        font-size: 1.6rem;
+        font-weight: bold;
+        color: #212529;
+        margin: 5px 0;
+    }
+    .kpi-sub {
+        font-size: 0.8rem;
+        color: #495057;
+    }
 </style>
 """,
     unsafe_allow_html=True,
 )
+
+
+def limpiar_id(val):
+  if pd.isna(val):
+    return ""
+  val_str = str(val).strip().upper()
+  digitos = re.sub(r"\D", "", val_str)
+  return digitos if digitos else val_str
+
 
 TABLA_ENSO = {
     "1980-1981": "Neutral",
@@ -78,19 +110,14 @@ def obtener_fase_enso_fecha(dt):
   return TABLA_ENSO.get(ciclo, "Neutral")
 
 
-def limpiar_id(val):
-  """Remueve letras (como la 'A'), espacios o caracteres raros para dejar solo los dígitos."""
-  if pd.isna(val):
-    return ""
-  val_str = str(val).strip().upper()
-  # Extrae solo los dígitos numéricos de la cadena
-  digitos = re.sub(r"\D", "", val_str)
-  return digitos if digitos else val_str
+def obtener_fase_enso_anio(anio):
+  ciclo = f"{anio}-{anio + 1}"
+  return TABLA_ENSO.get(ciclo, "Neutral")
 
 
 @st.cache_data
 def load_data():
-  # 1. RED CONVENCIONAL
+  # Convencional
   df_conv = pd.read_parquet("estaciones.parquet")
   try:
     df_nomina_conv = pd.read_csv(
@@ -117,7 +144,7 @@ def load_data():
       how="left",
   )
 
-  # 2. RED AUTOMÁTICA (EMAS)
+  # Automáticas (EMAS)
   df_auto = pd.DataFrame()
   df_nomina_emas = pd.DataFrame()
 
@@ -141,8 +168,6 @@ def load_data():
         renombrar_dict[col] = "lon"
 
     df_nomina_emas = df_nomina_emas.rename(columns=renombrar_dict)
-
-    # Limpiar e igualar IDs en la nómina (remueve la 'A')
     df_nomina_emas["id_estacion"] = df_nomina_emas["id_estacion"].apply(
         limpiar_id
     )
@@ -156,7 +181,6 @@ def load_data():
     if "Id" in df_auto.columns:
       df_auto = df_auto.rename(columns={"Id": "id_estacion"})
 
-    # Limpiar e igualar IDs en las mediciones
     df_auto["id_estacion"] = df_auto["id_estacion"].apply(limpiar_id)
     df_auto["fecha"] = pd.to_datetime(df_auto["fecha"])
 
@@ -173,56 +197,50 @@ def load_data():
 
   return df_conv, df_nomina_conv, df_auto, df_nomina_emas
 
+
 try:
   df_conv, df_nomina_conv, df_auto, df_nomina_emas = load_data()
 except Exception as e:
-  st.error(f"Error al cargar archivos base: {e}")
+  st.error(f"Error al cargar datos: {e}")
   st.stop()
 
-# --- BARRA LATERAL: SELECTOR DE RED Y FILTROS ---
-st.sidebar.title("🎛️ Configuración y Filtros")
+# --- FILTROS LATERALES ---
+st.sidebar.title("🎛️ Filtros y Opciones")
 
 tipo_red = st.sidebar.radio(
-    "Seleccionar Red de Estaciones",
-    ["Convencionales (SMN / INTA)", "Automáticas (EMAS)"],
+    "Red de Estaciones", ["Convencionales (SMN / INTA)", "Automáticas (EMAS)"]
 )
 
 if tipo_red == "Convencionales (SMN / INTA)":
-  df_active = df_conv
-  df_nomina_active = df_nomina_conv
+  df_active, df_nomina_active = df_conv, df_nomina_conv
 else:
-  df_active = df_auto
-  df_nomina_active = df_nomina_emas
+  df_active, df_nomina_active = df_auto, df_nomina_emas
   if df_active.empty:
-    st.sidebar.warning(
-        "⚠️ No se encontraron registros en 'estaciones_automaticas.parquet'."
-    )
+    st.sidebar.warning("No hay datos en estaciones automáticas.")
     st.stop()
 
-provincias_unicas = sorted(df_nomina_active["provincia"].dropna().unique())
-provincias = ["Todas"] + list(provincias_unicas)
-prov_sel = st.sidebar.selectbox("Seleccionar Provincia", provincias)
+provincias = ["Todas"] + sorted(
+    df_nomina_active["provincia"].dropna().unique().tolist()
+)
+prov_sel = st.sidebar.selectbox("Provincia", provincias)
 
-if prov_sel != "Todas":
-  df_nomina_filtrada = df_nomina_active[
-      df_nomina_active["provincia"] == prov_sel
-  ]
-else:
-  df_nomina_filtrada = df_nomina_active
-
-estaciones = sorted(df_nomina_filtrada["nombre"].dropna().unique())
+df_nomina_filtrada = (
+    df_nomina_active[df_nomina_active["provincia"] == prov_sel]
+    if prov_sel != "Todas"
+    else df_nomina_active
+)
+estaciones = sorted(df_nomina_filtrada["nombre"].dropna().unique().tolist())
 
 if not estaciones:
-  st.sidebar.warning("No hay estaciones disponibles para esta selección.")
+  st.sidebar.warning("No hay estaciones disponibles.")
   st.stop()
 
-estacion_sel = st.sidebar.selectbox("Seleccionar Estación", estaciones)
+estacion_sel = st.sidebar.selectbox("Estación", estaciones)
 
 min_fecha, max_fecha = (
     df_active["fecha"].min().date(),
     df_active["fecha"].max().date(),
 )
-
 fechas_sel = st.sidebar.date_input(
     "Rango de Fechas",
     value=(min_fecha, max_fecha),
@@ -230,8 +248,7 @@ fechas_sel = st.sidebar.date_input(
     max_value=max_fecha,
 )
 
-# --- FILTRO POR MESES ---
-st.sidebar.markdown("### 📅 Filtro por Meses")
+# Filtro de Meses
 dict_meses = {
     1: "Enero",
     2: "Febrero",
@@ -249,42 +266,29 @@ dict_meses = {
 
 if "todos_meses" not in st.session_state:
   st.session_state["todos_meses"] = True
-  for num_mes in dict_meses:
-    st.session_state[f"chk_mes_{num_mes}"] = True
+  for m in dict_meses:
+    st.session_state[f"chk_mes_{m}"] = True
 
 
-def toggle_todos_meses():
-  nuevo_estado = st.session_state["todos_meses"]
-  for num_mes in dict_meses:
-    st.session_state[f"chk_mes_{num_mes}"] = nuevo_estado
-
-
-def actualizar_estado_todos():
-  todos_activos = all(
-      st.session_state.get(f"chk_mes_{m}", False) for m in dict_meses
-  )
-  st.session_state["todos_meses"] = todos_activos
+def toggle_meses():
+  st_val = st.session_state["todos_meses"]
+  for m in dict_meses:
+    st.session_state[f"chk_mes_{m}"] = st_val
 
 
 st.sidebar.checkbox(
-    "Seleccionar Todos los Meses",
-    key="todos_meses",
-    on_change=toggle_todos_meses,
+    "Seleccionar Todos los Meses", key="todos_meses", on_change=toggle_meses
 )
 meses_sel = []
-
-with st.sidebar.expander("Seleccionar Meses", expanded=True):
-  col_mes1, col_mes2 = st.columns(2)
-  for num_mes, nombre_mes in dict_meses.items():
-    col_actual = col_mes1 if num_mes % 2 != 0 else col_mes2
-    check = col_actual.checkbox(
-        nombre_mes, key=f"chk_mes_{num_mes}", on_change=actualizar_estado_todos
-    )
-    if check:
-      meses_sel.append(num_mes)
+with st.sidebar.expander("Filtrar Meses", expanded=False):
+  c1, c2 = st.columns(2)
+  for num_m, nom_m in dict_meses.items():
+    col = c1 if num_m % 2 != 0 else c2
+    if col.checkbox(nom_m, key=f"chk_mes_{num_m}"):
+      meses_sel.append(num_m)
 
 if not meses_sel:
-  st.warning("Seleccioná al menos un mes para visualizar los datos.")
+  st.warning("Por favor seleccioná al menos un mes.")
   st.stop()
 
 fecha_inicio, fecha_fin = (
@@ -298,22 +302,26 @@ info_estacion = df_nomina_active[
 ].iloc[0]
 id_estacion_sel = str(info_estacion["id_estacion"])
 
-df_estacion = df_active[
-    (df_active["id_estacion"] == id_estacion_sel)
-    & (df_active["fecha"].dt.date >= fecha_inicio)
-    & (df_active["fecha"].dt.date <= fecha_fin)
-    & (df_active["fecha"].dt.month.isin(meses_sel))
+# Datos históricos completos de la estación seleccionada
+df_estacion_historico = df_active[
+    df_active["id_estacion"] == id_estacion_sel
+].copy()
+
+# Datos filtrados por rango de fecha y meses para la estación activa
+df_estacion = df_estacion_historico[
+    (df_estacion_historico["fecha"].dt.date >= fecha_inicio)
+    & (df_estacion_historico["fecha"].dt.date <= fecha_fin)
+    & (df_estacion_historico["fecha"].dt.month.isin(meses_sel))
 ].sort_values("fecha")
 
-# --- ENCABEZADO ---
-st.title(f"📊 {info_estacion['nombre']} ({tipo_red})")
+# --- ENCABEZADO Y TARJETAS KPI ---
+st.title(f"📊 {info_estacion['nombre']}")
 alt_val = info_estacion.get("altura", "N/D")
 st.caption(
-    f"**Provincia:** {info_estacion['provincia']} | **ID:**"
+    f"**Red:** {tipo_red} | **Provincia:** {info_estacion['provincia']} | **ID:**"
     f" {id_estacion_sel} | **Altitud:** {alt_val} msnm"
 )
 
-# --- TARJETAS DE MÉTRICAS ---
 if not df_estacion.empty:
   idx_tmax = (
       df_estacion["tmax"].idxmax()
@@ -323,7 +331,7 @@ if not df_estacion.empty:
   val_tmax = (
       df_estacion.loc[idx_tmax, "tmax"] if idx_tmax is not None else None
   )
-  fecha_tmax = (
+  f_tmax = (
       df_estacion.loc[idx_tmax, "fecha"].strftime("%d/%m/%Y")
       if idx_tmax is not None
       else "N/D"
@@ -337,200 +345,355 @@ if not df_estacion.empty:
   val_tmin = (
       df_estacion.loc[idx_tmin, "tmin"] if idx_tmin is not None else None
   )
-  fecha_tmin = (
+  f_tmin = (
       df_estacion.loc[idx_tmin, "fecha"].strftime("%d/%m/%Y")
       if idx_tmin is not None
       else "N/D"
   )
 
-  df_estacion_anio = df_estacion.copy()
-  df_estacion_anio["anio"] = df_estacion_anio["fecha"].dt.year
-  precip_anual_series = df_estacion_anio.groupby("anio")["precip"].sum()
-  if not precip_anual_series.empty:
-    max_anio = precip_anual_series.idxmax()
-    max_anio_val = precip_anual_series.max()
-    str_anio, str_precip = f"{max_anio}", f"{max_anio_val:,.1f} mm acumulados"
-  else:
-    str_anio, str_precip = "N/D", ""
-  cant_datos = len(df_estacion)
-else:
-  val_tmax, fecha_tmax = None, "N/D"
-  val_tmin, fecha_tmin = None, "N/D"
-  str_anio, str_precip = "N/D", ""
-  cant_datos = 0
+  # Cálculo de Año con Mayor Precipitación
+  df_estacion_temp = df_estacion.copy()
+  df_estacion_temp["anio"] = df_estacion_temp["fecha"].dt.year
+  precip_anual_calc = (
+      df_estacion_temp.groupby("anio")["precip"].sum(min_count=1).dropna()
+  )
 
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-  st.metric(
-      "Tº Máx. Absoluta",
-      f"{val_tmax:.1f} °C" if pd.notnull(val_tmax) else "N/D",
-      delta=f"Ocurrió el {fecha_tmax}",
-      delta_color="off",
-  )
-with col2:
-  st.metric(
-      "Tº Mín. Absoluta",
-      f"{val_tmin:.1f} °C" if pd.notnull(val_tmin) else "N/D",
-      delta=f"Ocurrió el {fecha_tmin}",
-      delta_color="off",
-  )
-with col3:
-  st.metric(
-      "Año con Mayor Precipitación",
-      str_anio,
-      delta=str_precip,
-      delta_color="off",
-  )
-with col4:
-  st.metric("Cantidad de Registros", f"{cant_datos:,} días")
+  if not precip_anual_calc.empty:
+    anio_max_p = precip_anual_calc.idxmax()
+    val_max_p = precip_anual_calc.max()
+    sub_max_p = f"{val_max_p:,.1f} mm acumulados"
+    val_max_p_str = f"{anio_max_p}"
+  else:
+    val_max_p_str = "N/D"
+    sub_max_p = "Sin datos"
+
+  k1, k2, k3, k4 = st.columns(4)
+
+  with k1:
+    st.markdown(
+        f"""<div class="kpi-card" style="border-left-color: #dc3545;">
+            <div class="kpi-title">Tº Máx. Absoluta</div>
+            <div class="kpi-value">{f'{val_tmax:.1f} °C' if val_tmax else 'N/D'}</div>
+            <div class="kpi-sub">📅 {f_tmax}</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+  with k2:
+    st.markdown(
+        f"""<div class="kpi-card" style="border-left-color: #0d6efd;">
+            <div class="kpi-title">Tº Mín. Absoluta</div>
+            <div class="kpi-value">{f'{val_tmin:.1f} °C' if val_tmin else 'N/D'}</div>
+            <div class="kpi-sub">📅 {f_tmin}</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+  with k3:
+    st.markdown(
+        f"""<div class="kpi-card" style="border-left-color: #198754;">
+            <div class="kpi-title">Año Máx. Precipitación</div>
+            <div class="kpi-value">{val_max_p_str}</div>
+            <div class="kpi-sub">🌧️ {sub_max_p}</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+  with k4:
+    st.markdown(
+        f"""<div class="kpi-card" style="border-left-color: #6c757d;">
+            <div class="kpi-title">Registros Eval.</div>
+            <div class="kpi-value">{len(df_estacion):,}</div>
+            <div class="kpi-sub">Días observados en el rango</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 
 st.markdown("---")
 
 # --- PESTAÑAS PRINCIPALES ---
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📈 Series Diarias",
-    "🗓️ Comparativa ENSO / Interanual",
+    "📈 Series Diarias y Climatología",
+    "🗓️ ENSO y Mapa Interanual",
     "🗺️ Visor Geográfico",
     "📋 Tablas y Resúmenes",
 ])
 
-# 1. SERIES DIARIAS
+# 1. SERIES DIARIAS Y CLIMATOLOGÍA
 with tab1:
   if df_estacion.empty:
-    st.warning("No hay datos disponibles para los filtros seleccionados.")
+    st.warning("No hay registros para la selección actual.")
   else:
-    fig_temp = go.Figure()
-    fig_temp.add_trace(
+    # Media climatológica multianual por día-mes
+    df_estacion_historico["dia_mes"] = df_estacion_historico[
+        "fecha"
+    ].dt.strftime("%m-%d")
+
+    clim_tmax = df_estacion_historico.groupby("dia_mes")["tmax"].mean()
+    clim_tmin = df_estacion_historico.groupby("dia_mes")["tmin"].mean()
+
+    df_estacion["dia_mes"] = df_estacion["fecha"].dt.strftime("%m-%d")
+    df_estacion["tmax_clim"] = df_estacion["dia_mes"].map(clim_tmax)
+    df_estacion["tmin_clim"] = df_estacion["dia_mes"].map(clim_tmin)
+    df_estacion["precip_acum"] = df_estacion["precip"].cumsum()
+
+    # Gráfico Tmax
+    fig_tmax = go.Figure()
+    fig_tmax.add_trace(
         go.Scatter(
             x=df_estacion["fecha"],
             y=df_estacion["tmax"],
             mode="lines",
-            name="T. Máx (°C)",
-            line=dict(color="#d9534f"),
+            name="T° Máxima Diaria",
+            line=dict(color="#dc3545", width=1.8),
         )
     )
-    fig_temp.add_trace(
+    fig_tmax.add_trace(
+        go.Scatter(
+            x=df_estacion["fecha"],
+            y=df_estacion["tmax_clim"],
+            mode="lines",
+            name="Media Climatológica T° Máx",
+            line=dict(color="#6c757d", width=2, dash="dash"),
+        )
+    )
+    fig_tmax.update_layout(
+        title="Evolución de Temperatura Máxima Diaria vs. Media Climatológica",
+        hovermode="x unified",
+        yaxis_title="Temperatura (°C)",
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+        ),
+        margin=dict(l=20, r=20, t=50, b=20),
+    )
+    st.plotly_chart(fig_tmax, width="content")
+
+    # Gráfico Tmin
+    fig_tmin = go.Figure()
+    fig_tmin.add_trace(
         go.Scatter(
             x=df_estacion["fecha"],
             y=df_estacion["tmin"],
             mode="lines",
-            name="T. Mín (°C)",
-            line=dict(color="#0275d8"),
+            name="T° Mínima Diaria",
+            line=dict(color="#0d6efd", width=1.8),
         )
     )
-    fig_temp.update_layout(
-        title="Temperaturas Diarias", hovermode="x unified"
+    fig_tmin.add_trace(
+        go.Scatter(
+            x=df_estacion["fecha"],
+            y=df_estacion["tmin_clim"],
+            mode="lines",
+            name="Media Climatológica T° Mín",
+            line=dict(color="#6c757d", width=2, dash="dash"),
+        )
     )
-    st.plotly_chart(fig_temp, width="content")
+    fig_tmin.update_layout(
+        title="Evolución de Temperatura Mínima Diaria vs. Media Climatológica",
+        hovermode="x unified",
+        yaxis_title="Temperatura (°C)",
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+        ),
+        margin=dict(l=20, r=20, t=50, b=20),
+    )
+    st.plotly_chart(fig_tmin, width="content")
 
-    fig_precip = px.bar(
-        df_estacion,
-        x="fecha",
-        y="precip",
-        title="Precipitación Diaria (mm)",
-        color_discrete_sequence=["#5bc0de"],
+    # Gráfico Precipitación
+    fig_precip = make_subplots(specs=[[{"secondary_y": True}]])
+    fig_precip.add_trace(
+        go.Bar(
+            x=df_estacion["fecha"],
+            y=df_estacion["precip"],
+            name="Precipitación Diaria (mm)",
+            marker_color="#0dcaf0",
+            opacity=0.8,
+        ),
+        secondary_y=False,
+    )
+    fig_precip.add_trace(
+        go.Scatter(
+            x=df_estacion["fecha"],
+            y=df_estacion["precip_acum"],
+            name="Acumulado en el Período (mm)",
+            line=dict(color="#0b5ed7", width=2.5, dash="dash"),
+        ),
+        secondary_y=True,
+    )
+    fig_precip.update_layout(
+        title="Precipitación Diaria vs. Acumulado",
+        hovermode="x unified",
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+        ),
+        margin=dict(l=20, r=20, t=50, b=20),
+    )
+    fig_precip.update_yaxes(
+        title_text="Lluvia Diaria (mm)", secondary_y=False
+    )
+    fig_precip.update_yaxes(
+        title_text="Acumulado (mm)", secondary_y=True
     )
     st.plotly_chart(fig_precip, width="content")
 
-# 2. COMPARATIVA ENSO / INTERANUAL
+# 2. ENSO Y MAPA INTERANUAL POR AÑO
 with tab2:
-  st.subheader("Análisis Interanual y Fases El Niño / La Niña (ENSO)")
+  st.subheader("Análisis Interanual y Fases ENSO (El Niño / La Niña / Neutral)")
 
-  if df_estacion.empty:
-    st.warning("No hay datos disponibles para la estación seleccionada.")
-  else:
+  # 1. Gráfico de Evolución Mensual
+  if not df_estacion.empty:
     df_enso = df_estacion.copy()
     df_enso["anio"] = df_enso["fecha"].dt.year
     df_enso["mes_num"] = df_enso["fecha"].dt.month
     df_enso["Fase_ENSO"] = df_enso["fecha"].apply(obtener_fase_enso_fecha)
-
-    df_mensual = (
-        df_enso.groupby(["anio", "mes_num", "Fase_ENSO"])["precip"]
-        .sum(min_count=1)
-        .reset_index()
+    df_enso["Año_Fase"] = (
+        df_enso["anio"].astype(str) + " (" + df_enso["Fase_ENSO"] + ")"
     )
-    df_mensual["anio_str"] = df_mensual["anio"].astype(str)
+
+    var_enso = st.selectbox(
+        "Seleccioná la variable a comparar por año y Fase ENSO:",
+        [
+            "Precipitación (mm)",
+            "Temperatura Máxima (°C)",
+            "Temperatura Mínima (°C)",
+        ],
+    )
+
+    if var_enso == "Precipitación (mm)":
+      df_m = (
+          df_enso.groupby(["anio", "Año_Fase", "mes_num"])["precip"]
+          .sum(min_count=1)
+          .reset_index()
+      )
+      col_y = "precip"
+      title_y = "Lluvia Acumulada Mensual (mm)"
+    elif var_enso == "Temperatura Máxima (°C)":
+      df_m = (
+          df_enso.groupby(["anio", "Año_Fase", "mes_num"])["tmax"]
+          .mean()
+          .reset_index()
+      )
+      col_y = "tmax"
+      title_y = "T° Máxima Promedio Mensual (°C)"
+    else:
+      df_m = (
+          df_enso.groupby(["anio", "Año_Fase", "mes_num"])["tmin"]
+          .mean()
+          .reset_index()
+      )
+      col_y = "tmin"
+      title_y = "T° Mínima Promedio Mensual (°C)"
 
     fig_interanual = px.line(
-        df_mensual,
+        df_m,
         x="mes_num",
-        y="precip",
-        color="anio_str",
+        y=col_y,
+        color="Año_Fase",
         markers=True,
-        title="Precipitación Mensual por Año",
+        title=f"Evolución Mensual Comparativa por Año y Fase ENSO - {var_enso}",
         labels={
             "mes_num": "Mes",
-            "precip": "Precipitación (mm)",
-            "anio_str": "Año",
+            col_y: title_y,
+            "Año_Fase": "Año (Fase ENSO)",
         },
     )
-    tick_vals = list(dict_meses.keys())
-    tick_texts = [dict_meses[m][:3] for m in tick_vals]
+    t_vals = list(dict_meses.keys())
+    t_text = [dict_meses[m][:3] for m in t_vals]
     fig_interanual.update_layout(
-        xaxis=dict(tickmode="array", tickvals=tick_vals, ticktext=tick_texts)
+        xaxis=dict(tickmode="array", tickvals=t_vals, ticktext=t_text),
+        hovermode="x unified",
     )
     st.plotly_chart(fig_interanual, width="content")
 
-    st.markdown("---")
-    st.subheader("📊 Comportamiento Medio según Fase ENOS")
+  st.markdown("---")
+  st.subheader("🗺️ Mapa Interanual por Estación catalogado por Fase ENSO")
 
-    df_fases = (
-        df_enso.groupby(["Fase_ENSO", "mes_num"])
-        .agg({"precip": "mean", "tmax": "mean", "tmin": "mean"})
-        .reset_index()
+  # Construcción del dataset global anual para el mapa interanual ENSO
+  df_map_active = df_active.copy()
+  df_map_active["anio"] = df_map_active["fecha"].dt.year
+  df_map_active["Fase_ENSO"] = df_map_active["fecha"].apply(
+      obtener_fase_enso_fecha
+  )
+
+  df_map_anual = (
+      df_map_active.groupby(["id_estacion", "anio", "Fase_ENSO"])[
+          ["precip", "tmax", "tmin"]
+      ]
+      .agg({"precip": "sum", "tmax": "mean", "tmin": "mean"})
+      .reset_index()
+  )
+
+  df_map_anual = df_map_anual.merge(
+      df_nomina_active[["id_estacion", "nombre", "provincia", "lat", "lon"]],
+      on="id_estacion",
+      how="inner",
+  ).dropna(subset=["lat", "lon"])
+
+  if not df_map_anual.empty:
+    df_map_anual["Año_Str"] = df_map_anual["anio"].astype(str)
+    df_map_anual["Label_Completa"] = (
+        df_map_anual["nombre"]
+        + " | "
+        + df_map_anual["Fase_ENSO"]
+        + " ("
+        + df_map_anual["Año_Str"]
+        + ")"
     )
 
-    color_map_enso = {
-        "El Niño": "#d9534f",
-        "La Niña": "#0275d8",
-        "Neutral": "#5cb85c",
-    }
+    fig_enso_map = px.scatter_geo(
+        df_map_anual,
+        lat="lat",
+        lon="lon",
+        color="Fase_ENSO",
+        size="precip",
+        hover_name="nombre",
+        hover_data={
+            "provincia": True,
+            "Fase_ENSO": True,
+            "anio": True,
+            "precip": ":.1f",
+            "tmax": ":.1f",
+            "tmin": ":.1f",
+            "lat": False,
+            "lon": False,
+        },
+        animation_frame="anio",
+        scope="south america",
+        title="Clasificación de Fase ENSO y Precipitación Anual por Estación",
+        color_discrete_map={
+            "El Niño": "#dc3545",
+            "La Niña": "#0d6efd",
+            "Neutral": "#28a745",
+        },
+        labels={
+            "Fase_ENSO": "Fase ENSO",
+            "precip": "Precip. Acumulada (mm)",
+            "tmax": "T° Máx Prom (°C)",
+            "tmin": "T° Mín Prom (°C)",
+            "anio": "Año",
+        },
+    )
 
-    col_e1, col_e2 = st.columns(2)
-
-    with col_e1:
-      fig_enso_precip = px.bar(
-          df_fases,
-          x="mes_num",
-          y="precip",
-          color="Fase_ENSO",
-          barmode="group",
-          color_discrete_map=color_map_enso,
-          title="Precipitación Media Mensual por Fase ENOS (mm)",
-          labels={
-              "mes_num": "Mes",
-              "precip": "Precipitación Media (mm)",
-              "Fase_ENSO": "Fase",
-          },
-      )
-      fig_enso_precip.update_layout(
-          xaxis=dict(tickmode="array", tickvals=tick_vals, ticktext=tick_texts)
-      )
-      st.plotly_chart(fig_enso_precip, width="content")
-
-    with col_e2:
-      fig_enso_tmax = px.line(
-          df_fases,
-          x="mes_num",
-          y="tmax",
-          color="Fase_ENSO",
-          markers=True,
-          color_discrete_map=color_map_enso,
-          title="Tº Máxima Promedio por Fase ENOS (°C)",
-          labels={
-              "mes_num": "Mes",
-              "tmax": "Tº Máxima (°C)",
-              "Fase_ENSO": "Fase",
-          },
-      )
-      fig_enso_tmax.update_layout(
-          xaxis=dict(tickmode="array", tickvals=tick_vals, ticktext=tick_texts)
-      )
-      st.plotly_chart(fig_enso_tmax, width="content")
+    fig_enso_map.update_geos(
+        showsubunits=True,
+        subunitcolor="#6c757d",
+        subunitwidth=1,
+        showcountries=True,
+        countrycolor="#343a40",
+        countrywidth=1.5,
+        showcoastlines=True,
+        showland=True,
+        landcolor="#f8f9fa",
+        fitbounds="locations",
+    )
+    fig_enso_map.update_layout(
+        height=600, margin={"r": 0, "t": 40, "l": 0, "b": 0}
+    )
+    st.plotly_chart(fig_enso_map, width="content")
 
 # 3. VISOR GEOGRÁFICO
 with tab3:
-  st.subheader("Mapa de Ubicación de Estaciones")
+  st.subheader("Ubicación Geográfica de Estaciones")
   df_mapa = df_nomina_active.dropna(subset=["lat", "lon"]).copy()
   df_mapa["Estado"] = df_mapa["nombre"].apply(
       lambda x: (
@@ -546,92 +709,118 @@ with tab3:
       hover_data=["provincia", "id_estacion"],
       color="Estado",
       color_discrete_map={
-          "Estación Seleccionada": "#d9534f",
-          "Otras Estaciones": "#0275d8",
+          "Estación Seleccionada": "#dc3545",
+          "Otras Estaciones": "#0d6efd",
       },
-      size=df_mapa["Estado"].apply(
-          lambda x: 14 if x == "Estación Seleccionada" else 6
-      ),
       scope="south america",
       center={"lat": info_estacion["lat"], "lon": info_estacion["lon"]},
       projection="mercator",
   )
+
+  # Subdivisiones políticas/provinciales
+  fig_map.update_geos(
+      showsubunits=True,
+      subunitcolor="#6c757d",
+      subunitwidth=1.2,
+      showcountries=True,
+      countrycolor="#343a40",
+      countrywidth=1.5,
+      showcoastlines=True,
+      coastlinecolor="#343a40",
+      showland=True,
+      landcolor="#f8f9fa",
+      fitbounds="locations",
+  )
+
   fig_map.update_layout(
-      height=600,
-      margin={"r": 0, "t": 10, "l": 0, "b": 0},
-      geo=dict(
-          showland=True,
-          landcolor="rgb(243, 243, 243)",
-          showcountries=True,
-          countrycolor="rgb(204, 204, 204)",
-          fitbounds="locations",
-      ),
+      height=550, margin={"r": 0, "t": 10, "l": 0, "b": 0}
   )
   st.plotly_chart(fig_map, width="content")
 
-# 4. TABLAS Y RESÚMENES
+# 4. TABLAS Y RESÚMENES (CON EXPORTACIÓN A CSV)
 with tab4:
-  subtab1, subtab2, subtab3 = st.tabs([
-      "🗓️ Resumen Mensual",
-      "🌧️ Precipitación Anual",
-      "📄 Datos Diarios Crudos",
-  ])
+  st.subheader("📋 Resúmenes y Datos de la Estación")
 
   if df_estacion.empty:
-    st.warning("No hay datos para calcular resúmenes.")
+    st.warning("No hay registros para la selección actual.")
   else:
-    df_estacion_calc = df_estacion.copy()
-    df_estacion_calc["tmedia"] = (
-        df_estacion_calc["tmax"] + df_estacion_calc["tmin"]
-    ) / 2
+    df_tab = df_estacion.copy()
+    df_tab["anio"] = df_tab["fecha"].dt.year
+    df_tab["mes"] = df_tab["fecha"].dt.month
+    df_tab["nombre_mes"] = df_tab["mes"].map(dict_meses)
 
-    with subtab1:
-      st.subheader("Resumen Climatológico por Año-Mes")
-      df_estacion_calc["Año_Mes"] = df_estacion_calc["fecha"].dt.to_period("M")
-      resumen_mensual = []
-      for periodo, group in df_estacion_calc.groupby("Año_Mes"):
-        resumen_mensual.append({
-            "Año-Mes": str(periodo),
-            "T. Media (°C)": round(group["tmedia"].mean(), 1),
-            "T. Máx. Absoluta (°C)": group["tmax"].max(),
-            "T. Mín. Absoluta (°C)": group["tmin"].min(),
-            "Precip. Acumulada (mm)": round(group["precip"].sum(), 1),
-            "Días con Lluvia": int((group["precip"] > 0.1).sum()),
-            "Cantidad de Datos": len(group),
-        })
-      df_resumen_m = pd.DataFrame(resumen_mensual)
-      st.dataframe(df_resumen_m, width="content", hide_index=True)
-
-    with subtab2:
-      st.subheader("Precipitación Total por Año")
-      df_estacion_calc["anio"] = df_estacion_calc["fecha"].dt.year
-      resumen_anual = []
-      for anio, group in df_estacion_calc.groupby("anio"):
-        fase_rep = obtener_fase_enso_fecha(
-            pd.Timestamp(year=anio, month=10, day=1)
+    # --- TABLA 1: RESUMEN MENSUAL ---
+    st.markdown("### 📊 1. Resumen Mensual")
+    resumen_mensual = (
+        df_tab.groupby(["anio", "mes", "nombre_mes"])
+        .agg(
+            tmax_promedio=("tmax", "mean"),
+            tmax_absoluta=("tmax", "max"),
+            tmin_promedio=("tmin", "mean"),
+            tmin_absoluta=("tmin", "min"),
+            precip_acumulada=("precip", "sum"),
+            dias_con_lluvia=("precip", lambda x: (x > 0.1).sum()),
         )
-        resumen_anual.append({
-            "Año": anio,
-            "Fase ENOS": fase_rep,
-            "Precip. Acumulada (mm)": round(group["precip"].sum(), 1),
-            "Días con Precipitación (>0.1mm)": int(
-                (group["precip"] > 0.1).sum()
-            ),
-            "Cantidad de Datos": len(group),
-        })
-      df_resumen_a = pd.DataFrame(resumen_anual)
-      st.dataframe(df_resumen_a, width="content", hide_index=True)
+        .reset_index()
+    )
 
-    with subtab3:
-      st.subheader("Registros Diarios")
-      df_export = df_estacion[[
-          "id_estacion",
-          "nombre",
-          "provincia",
-          "fecha",
-          "tmax",
-          "tmin",
-          "precip",
-      ]].copy()
-      df_export["fecha"] = df_export["fecha"].dt.strftime("%Y-%m-%d")
-      st.dataframe(df_export, width="content", hide_index=True)
+    st.dataframe(resumen_mensual, width="content", hide_index=True)
+    csv_mensual = resumen_mensual.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📥 Descargar Resumen Mensual (CSV)",
+        data=csv_mensual,
+        file_name=f"resumen_mensual_{id_estacion_sel}.csv",
+        mime="text/csv",
+        key="btn_csv_mensual",
+    )
+
+    st.markdown("---")
+
+    # --- TABLA 2: PRECIPITACIÓN ANUAL ---
+    st.markdown("### 🌧️ 2. Resumen de Precipitación Anual")
+    precip_anual_tabla = (
+        df_tab.groupby("anio")
+        .agg(
+            precip_acumulada=("precip", "sum"),
+            dias_con_lluvia=("precip", lambda x: (x > 0.1).sum()),
+            max_lluvia_diaria=("precip", "max"),
+        )
+        .reset_index()
+    )
+
+    st.dataframe(precip_anual_tabla, width="content", hide_index=True)
+    csv_anual = precip_anual_tabla.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📥 Descargar Precipitación Anual (CSV)",
+        data=csv_anual,
+        file_name=f"precipitacion_anual_{id_estacion_sel}.csv",
+        mime="text/csv",
+        key="btn_csv_anual",
+    )
+
+    st.markdown("---")
+
+    # --- TABLA 3: DATOS DIARIOS CRUDOS ---
+    st.markdown("### 📄 3. Registros Diarios Crudos")
+    df_export_diarios = df_estacion.drop(
+        columns=[
+            "dia_mes",
+            "tmax_clim",
+            "tmin_clim",
+            "precip_acum",
+            "anio",
+            "mes",
+            "nombre_mes",
+        ],
+        errors="ignore",
+    )
+
+    st.dataframe(df_export_diarios, width="content", hide_index=True)
+    csv_diarios = df_export_diarios.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📥 Descargar Datos Diarios Crudos (CSV)",
+        data=csv_diarios,
+        file_name=f"datos_diarios_{id_estacion_sel}.csv",
+        mime="text/csv",
+        key="btn_csv_diarios",
+    )
