@@ -1,0 +1,183 @@
+Id Interno;Id;Nombre;Provincia;Localidad;Latitud;Longitud
+A872872;413;25 de Mayo - EEA Pergamino;Buenos Aires;25 de Mayo;-35.48;-60.13
+A875000;682;5000;Buenos Aires;Hurlingham;-85;-55
+A875001;683;5001;Buenos Aires;Hurlingham;-85;-60
+A872993;704;993 - LAB;Sin asignar;loc_prueba;-84;-70
+A872994;705;994 - LAB;Sin asignar;loc_prueba;-84;-65
+A872996;707;996 - ENSAYO-CITEDEF-INTA;Sin asignar;loc_prueba;-34.6;-58.67
+A872997;708;997 - LAB;Sin asignar;loc_prueba;-84;-50
+A872998;709;998 - LAB;Sin asignar;loc_prueba;-84;-45
+A872999;18;999 - LAB;Sin asignar;loc_prueba;-84;-40
+A872995;706;A872995-CITEDEF-INTA;Buenos Aires;Villa Martelli;-34.55;-58.51
+A872923;516;Abra Pampa - EEA Abra Pampa;Jujuy;Abra Pampa;-22.8;-65.83
+A872814;236;Alfonso - EEA Pergamino;Buenos Aires;Mariano Alfonso;-33.91;-60.84
+A872885;393;Andalgala - EEA Catamarca;Catamarca;Andalgala;-27.61;-66.33
+A872912;403;Andresito - EEA Montecarlo;Misiones;Andresito;-25.62;-54.07
+A872823;233;Anguil -EEA Anguil;La Pampa;Anguil;-36.54;-63.99
+A872838;468;Aparicio - EEA Barrow;Buenos Aires;Coronel Dorrego;-38.67;-60.93
+A872820;237;Arrecifes - EEA Pergamino;Buenos Aires;Arrecifes;-34.05;-60.14
+A872913;404;B de Irigoyen - EEA Montecarlo;Misiones;Bernardo de Irigoyen;-26.28;-53.67
+A872824;242;Balcarce - EEA Balcarce;Buenos Aires;Balcarce;-37.76;-58.3
+A872811;251;Bandera - EEA EEA Quimilí;Santiago del Estero;Belgrano;-28.89;-62.27
+A872849;269;Bariloche - EEA Bariloche;Río Negro;Bariloche;-41.12;-71.25
+A872927;474;Barreal - EEA San Juan;San Juan;Barreal;-31.62;-69.47
+A872893;383;Basail - EEA Col Benitez;Chaco;San Fernando;-27.9;-59.3
+A872951;491;Bella Vista - EEA Bella Vista;Corrientes;Bella Vista;-28.45;-58.99
+A872904;425;Bme de las Casas -EEA Colorado;Formosa;Bartolomé de las Casas;-25.45;-59.5
+A872817;518;Bordenave - EEA Bordenave;Buenos Aires;Bordenave;-37.75;-63.08
+A872921;427;Caa Cati - EEA Corrientes;Corrientes;Caá Catí;-27.75;-57.62
+A872867;296;Calchaqui - EEA Reconquista;Santa Fe;Calchaqui;-29.88;-60.24
+A872945;484;Capilla de Siton - ICyA CIRN;Córdoba;Capilla de Sitón;-30.57;-63.65
+NH0989;664;Capilla del Monte (EMC);Córdoba;Capilla del Monte;-30.87;-64.55
+A872926;678;Casbas - EEA C. Naredo;Sin asignar;A definir;-36.86;-62.45
+A872801;79;Castelar - ICyA CIRN;Buenos Aires;Hurlingham;-34.61;-58.67
+A872889;380;Catuna - EEA La Rioja;La Rioja;Villa Santa Rita de Catuna;-30.96;-66.17
+A872928;431;Caucete - EEA San Juan;San Juan;Caucete;-31.7;-68.29
+A872946;489;Cañada Ombu - EEA Reconquista;Santa Fe;Cañada Ombu;-28.36;-60.15
+A872864;293;Ceres - EEA Rafaela;Santa Fe;Ceres;-29.87;-61.96
+A872908;382;Cerro Azul - EEA Cerro Azul;Misiones;Cerro Azul;-27.66;-55.44
+A872806;472;Chascomus - EEA Cuenca Salado;Buenos Aires;Chascomus;-35.74;-58.05
+A872891;377;Col Popular - EEA Col Benitez;Chaco;Colonia Popular;-27.27;-59.14
+A872917;700;Col. Tabay - EEA Bella Vista;Corrientes;Colonia Tabay;-28.18;-58.16
+A872854;495;Colan Conhué - EEA Esquel;Chubut;Colan Conhué;-43.23;-69.92
+A872830;272;Concepción - EEA Conc. Uruguay;Entre Rios;Concepción del Uruguay;-32.49;-58.35
+A872816;244;Coronel Suarez - EEA C. Naredo;Buenos Aires;Coronel Suarez;-37.29;-62.04
+A872829;478;Dean Funes - EEA Manfredi;Córdoba;Dean Funes;-30.34;-64.32
+A872958;502;Du Graty - EEA Sáenz Peña;Chaco;Coronel Du Graty;-27.7;-60.91
+A872967;703;El Calafate - EEA Rio Gallegos;Santa Cruz;El Calafate;-50.31;-72.32
+A872905;424;El Colorado - EEA El Colorado;Formosa;Pirane;-26.33;-59.35
+A872887;378;El Portezuelo - EEA La Rioja;La Rioja;El Portezuelo;-30.84;-66.7
+A872860;303;Esperanza - EEA Santa Cruz;Santa Cruz;Esperanza;-51.1;-70.5
+A872914;417;Esquina - EEA Bella Vista;Corrientes;Esquina;-30.04;-59.53
+A872871;348;Famailla - EEA Famailla;Tucuman;Famaillá;-27.02;-65.38
+A872805;248;Federal - EEA Concordia;Entre Rios;Federal;-30.93;-58.77
+A872815;238;Ferre - EEA Pergamino;Buenos Aires;Ferré;-34.1;-61.14
+A872964;721;Gob. Gregores - EEA Santa Cruz;Santa Cruz;Gobernador Gregores;-48.81;-70.14
+A872950;408;Goya - EEA Bella Vista;Corrientes;Goya;-29.18;-59.09
+A872972;674;Gral. Conesa - EEA Valle Inf.;Río Negro;General Conesa;-40.21;-64.19
+A872846;268;Gral. Roca - EEA Alto Valle;Río Negro;General Roca;-39.03;-67.74
+A872853;274;Gualjaina - EEA Esquel;Chubut;Gualjaina;-42.73;-70.5
+A872949;711;Guardia Mitre - EEA V Inferior;Río Negro;Guardia Mitre;-40.43;-63.68
+A872968;722;Güer Aike - EEA Santa Cruz;Santa Cruz;Güer Aike;-51.61;-69.66
+A872925;488;Hornillos - IPAF NOA;Jujuy;Hornillos;-23.66;-65.43
+A872870;716;Hughes - EEA Oliveros;Santa Fe;Hughes;-33.85;-61.33
+A872822;234;Huinca Renanco - EEA Anguil;Córdoba;Huinca Renanco;-34.77;-64.37
+A872898;667;Ing. Jacobacci - EEA Bariloche;Río Negro;Ingeniero Jacobacci;-41.33;-69.55
+NH0230;59;INTA - Alto Valle (EMC);Río Negro;General Roca;-39.01;-67.4
+NH0446;53;INTA - Anguil (EMC);La Pampa;Capital;-36.5;-63.98
+NH0400;32;INTA - Balcarce (EMC);Buenos Aires;Balcarce;-37.75;-58.3
+NH0216;33;INTA - Barrow (EMC);Buenos Aires;Tres Arroyos;-38.32;-60.25
+NH0067;41;INTA - Bella Vista (EMC);Corrientes;Bella Vista;-28.43;-58.92
+NH0343;34;INTA - Bordenave (EMC);Buenos Aires;Puan;-37.85;-63.02
+NH0358;9;INTA - Castelar (EMC);Buenos Aires;Hurlingham;-34.61;-58.67
+NH0070;39;INTA - Catamarca Sumalao (EMC);Catamarca;Valle Viejo;-28.48;-65.73
+NH0423;58;INTA - Cerro Azul (EMC);Misiones;Leandro N Alem;-27.65;-55.43
+NH0487;44;INTA - Colonia Benitez (EMC);Chaco;Colonia Benítez;-27.42;-58.93
+NH0497;48;INTA - Conc. del Uruguay (EMC);Entre Rios;Uruguay;-32.49;-58.35
+NH0496;49;INTA - Concordia (EMC);Entre Rios;Concordia;-31.38;-58.03
+NH0460;40;INTA - Corrientes (EMC);Corrientes;Empedrado;-27.65;-58.77
+NH0464;51;INTA - El Colorado (EMC);Formosa;Pirane;-26.3;-59.38
+NH0444;68;INTA - Famailla (EMC);Tucuman;Famaillá;-27.05;-65.42
+NH0037;54;INTA - Gral Pico (EMC);La Pampa;General Pico;-35.67;-63.75
+NH0038;35;INTA - Gral Villegas (EMC);Buenos Aires;General Villegas;-34.92;-62.73
+NH0421;36;INTA - Hilario Ascasubi (EMC);Buenos Aires;Villarino;-39.38;-62.62
+NH0442;56;INTA - La Consulta (EMC);Mendoza;Puan;-33.73;-69.12
+NH0550;67;INTA - La Maria S.Estero (EMC);Santiago del Estero;Silipica;-28.02;-64.23
+NH0416;45;INTA - Las Breñas (EMC);Chaco;9 de Julio;-27.1;-61.1
+NH0438;31;INTA - Manfredi (EMC);Córdoba;Río Segundo;-31.82;-63.77
+NH0502;30;INTA - Marcos Juarez (EMC);Córdoba;Marcos Juarez;-32.68;-62.12
+NH0485;57;INTA - Mendoza (EMC);Mendoza;Junin;-33.15;-68.47
+NH0498;42;INTA - Mercedes Ctes (EMC);Corrientes;Mercedes;-29.17;-58.02
+NH0472;63;INTA - Oliveros (EMC);Santa Fe;Iriondo;-32.55;-60.85
+NH0114;50;INTA - Parana (EMC);Entre Rios;Paraná;-31.85;-60.54
+NH0145;37;INTA - Pergamino (EMC);Buenos Aires;Pergamino;-33.93;-60.55
+NH0098;64;INTA - Rafaela (EMC);Santa Fe;Vera;-31.18;-61.55
+NH0448;55;INTA - Rama Caída (EMC);Mendoza;San Rafael;-34.67;-68.38
+NH0437;65;INTA - Reconquista (EMC);Santa Fe;Reconquista;-29.18;-59.7
+NH0415;46;INTA - Roque Saenz Peña (EMC);Chaco;Comandante Fernandez;-26.87;-60.45
+NH0475;60;INTA - Salta (EMC);Salta;Cerrillos;-24.9;-65.5
+NH0445;61;INTA - San Juan (EMC);San Juan;Angaco;-31.37;-68.32
+NH0492;38;INTA - San Pedro (EMC);Buenos Aires;San Pedro;-33.74;-59.8
+NH0557;47;INTA - Trelew (EMC);Chubut;Rawson;-43.23;-65.3
+NH0439;62;INTA - Villa Mercedes (EMC);San Luis;General Pedernera;-33.72;-65.48
+NH0990;43;INTA DELTA del Parana (EMC);Buenos Aires;Campana;-34.18;-58.86
+A872971;672;Ituzaingo - EEA Corrientes;Corrientes;Ituzaingo;-27.54;-56.58
+A872899;713;J J Castelli - EEA Sáenz Peña;Chaco;Castelli;-25.96;-60.56
+A872965;720;Jaramillo - EEA Santa Cruz;Santa Cruz;Jaramillo;-47.2;-66.93
+A872938;454;Junín - EEA Junin Mendoza;Mendoza;Junin;-33.12;-68.48
+A872962;515;La Cigüeña - EEA Reconquista;Santa Fe;Fortin Olmos;-29.25;-61.02
+A872874;284;La Colmena - EEA Paraná;Entre Rios;La Colmena;-31.55;-59.72
+A872939;482;La Consulta - EEA Consulta;Mendoza;San Carlos;-33.77;-69.15
+A872808;241;La Dulce - EEA Balcarce;Buenos Aires;Necochea;-38.34;-59.01
+A872934;433;La Guevarina - EEA Rama Caida;Mendoza;La Guevarina;-34.79;-68.02
+A872833;368;Las Armas - EEA Cuenca Salado;Buenos Aires;Las Armas;-37.09;-57.87
+A872896;723;Las Breñas - EEA Las Breñas;Chaco;Las Breñas;-27.07;-61.06
+NH0910;663;Las Rosas (EMC) - NO ACTIVA;Santa Fe;Las Rosas;-32.48;-61.57
+A872868;297;Las Rosas - EEA Oliveros;Santa Fe;Las Rosas;-32.49;-61.57
+A872834;230;Lima - EEA San Pedro;Buenos Aires;Lima;-33.97;-59.31
+A872942;475;Lincoln - EEA Villegas;Buenos Aires;General Lincoln;-34.84;-61.6
+A872810;267;Llavallol - ICyA CIRN;Buenos Aires;Llavallol;-34.79;-58.45
+A872839;469;Loma Chata - EEA Barrow;Buenos Aires;Coronel Dorrego;-38.65;-61.45
+A872966;717;Los Antiguos - EEA Santa Cruz;Santa Cruz;Los Antiguos;-46.55;-71.64
+A872956;498;Los Juríes - EEA Quimilí;Santiago del Estero;Los Juríes;-28.52;-62.16
+A872827;277;M Juarez - EEA Marcos Juarez;Córdoba;Marcos Juarez;-32.72;-62.11
+A872832;687;Maciá - EEA Conc. del Uruguay;Entre Rios;Maciá;-32.06;-59.6
+A872935;434;Malargüe - EEA Rama Caida;Mendoza;Malargüe;-35.38;-69.57
+A872961;364;Malbran - EEA Quimilí;Santiago del Estero;Malbrán;-29.32;-62.46
+A872907;372;Manfredi - EEA Manfredi;Córdoba;Manfredi;-31.86;-63.75
+A872840;447;Medanos - EEA Hilario Ascasubi;Buenos Aires;Medanos;-38.87;-62.66
+A872915;440;Mercedes - EEA Mercedes;Corrientes;Mercedes;-29.2;-58.04
+A872819;240;Miramar - EEA Balcarce;Buenos Aires;Miramar;-38.15;-57.99
+A872954;496;Monte Quemado - EEA Quimilí;Santiago del Estero;Monte Quemado;-25.86;-62.71
+A872911;409;Montecarlo - EEA Montecarlo;Misiones;Montecarlo;-26.57;-54.73
+A872888;379;P de Los Llanos - EEA La Rioja;La Rioja;Punta de Los Llanos;-30.15;-66.55
+A872850;281;P Golondrinas - EEA Bariloche;Chubut;Lago Puelo;-42;-71.52
+A872901;445;P. de la Plaza -EEA Sáenz Peña;Chaco;Presidencia de La Plaza;-26.93;-59.8
+A872882;395;Palma Sola - EEA Yuto;Jujuy;Palma Sola;-23.98;-64.3
+A872940;483;Pareditas - EEA Consulta;Mendoza;San Carlos;-33.95;-69.08
+A872856;679;Paso de Indios - EEA Chubut;Chubut;Paso de Indios;-43.86;-69.05
+A872969;718;Perito Moreno - EEA Santa Cruz;Santa Cruz;Perito Moreno;-46.6;-70.92
+A872918;696;Pje. Desmochado - EEA B Vista;Corrientes;Bella Vista;-28.8;-59
+A872947;519;Plottier - IPAF Patagonia;Neuquen;Plottier;-38.95;-68.33
+A872929;444;Pocito - EEA San juan;San Juan;Pocito;-31.66;-68.59
+A872855;350;Puerto Piramides - EEA Chubut;Chubut;Puerto Pirámides;-42.54;-64.29
+A872955;497;Quimilí - EEA Quimilí;Santiago del Estero;Quimilí;-27.54;-62.35
+A872862;292;Rafaela - EEA Rafaela;Santa Fe;Rafaela;-31.2;-61.5
+A872933;432;Rama Caida - EEA Rama Caida;Mendoza;Rama Caída;-34.67;-68.39
+A872837;473;Rauch - EEA Cuenca Salado;Buenos Aires;Rauch;-36.8;-59.11
+A872865;294;Reconquista - EEA Reconquista;Santa Fe;Reconquista;-29.26;-59.71
+A872847;300;Rio Colorado - EEA Alto Valle;Río Negro;Río Colorado;-39.02;-64.08
+A872835;231;Rio Tala - EEA San Pedro;Buenos Aires;Rio Tala;-33.77;-59.63
+A872803;249;S.J. Frontera - EEA Concordia;Entre Rios;San Jaime de la Frontera;-30.36;-58.32
+A872812;250;Sachayoj - EEA Quimilí;Santiago del Estero;Sachayoj;-26.46;-61.81
+A872802;662;San Fernando - EEA Delta;Buenos Aires;Tigre;-34.25;-58.61
+A872863;291;San Jorge - EEA Rafaela;Santa Fe;San Jorge;-31.95;-61.83
+A872952;725;San Luis del Palmar-Corrientes;Corrientes;San Luis Del Palmar;-27.5;-58.52
+A872890;358;San Pedro - EEA San Pedro;Buenos Aires;San Pedro;-33.74;-59.8
+A872831;686;San Salvador - EEA Concordia;Entre Rios;San Salvador;-31.65;-58.5
+A872859;339;San Sebastian - EEA Santa Cruz;Tierra del Fuego;San Sebastian;-52.89;-68.45
+A872910;412;San Vicente - EEA Cerro Azul;Misiones;San Vicente;-26.92;-54.42
+A872937;456;Santa Rosa - EEA Junin Mendoza;Mendoza;Santa Rosa;-33.18;-67.87
+A872900;376;Santa Sylvina - EEA Sáenz Peña;Chaco;Santa Sylvina;-27.85;-61.13
+A872857;282;Sarmiento - EEA Chubut;Chubut;Sarmiento;-45.6;-69.03
+A872916;421;Sombrerito - EEA Corrientes;Corrientes;El Sombrerito;-27.65;-58.77
+A872924;494;Sta Victoria O -EEA Abra Pampa;Salta;Santa Victoria Oeste;-22.25;-64.96
+A872842;448;Stroeder -EEA Hilario Ascasubi;Buenos Aires;Stroeder;-40.18;-62.61
+A872884;392;Sumalao - EEA Catamarca;Catamarca;Sumalao;-28.47;-65.73
+A872931;461;Tilisarao - EEA San Luis;San Luis;Tilisarao;-32.67;-65.23
+A872825;245;Tornquist - EEA Bordenave;Buenos Aires;Tornquist;-38.12;-62.24
+A872877;507;Trancas - EEA Famaillá;Tucuman;Famaillá;-26.28;-65.27
+A872906;367;Trenque Lauquen - EEA Villegas;Buenos Aires;Trenque Lauquen;-35.97;-62.77
+A872852;690;Trevelin - EEA Esquel;Chubut;Trevelin;-43.12;-71.55
+A872941;676;Tupungato - EEA La Consulta;Mendoza;Tupungato;-33.15;-69.29
+NH0046;66;UNR - Zavalla (EMC);Santa Fe;Puan;-33.02;-60.88
+A872909;386;V Miguel Lanus -EEA Cerro Azul;Misiones;Villa Miguel Lanus;-27.43;-55.89
+A872813;719;Vaca Huañuna - EEA Santiago;Santiago del Estero;Vaca Huañuna;-27.47;-63.47
+A872970;724;Valle Inferior-EEA Valle Inf.;Río Negro;Viedma;-40.8;-63.06
+A872861;275;Viamonte - ICyA CIRN;Córdoba;Viamonte;-33.83;-63.02
+A872963;511;Villa Ana - EEA Reconquista;Santa Fe;Villa Ana;-28.44;-59.8
+A872826;477;Villa Dolores - EEA Manfredi;Córdoba;Manfredi;-31.94;-65.22
+A872930;420;Villa Mercedes - EEA San Luis;San Luis;Villa Mercedes;-33.66;-65.41
+A872804;694;Villa Paranacito-EEA C. del Ur;Entre Rios;Villa Paranacito;-33.71;-58.65
+A872948;695;Villa Ramallo - EEA San Pedro;Buenos Aires;Villa Ramallo;-33.52;-60.11
+A872841;366;Villalonga - EEA H Ascasubi;Buenos Aires;Villalonga;-39.92;-62.62
