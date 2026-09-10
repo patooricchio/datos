@@ -22,24 +22,11 @@ st.markdown("""
 
 @st.cache_data
 def load_data():
-    df_clima = pd.read_parquet("estaciones.parquet")
-    df_clima["id_estacion"] = df_clima["id_estacion"].astype(str)
+    # Carga rápida del parquet presintetizado y optimizado
+    df_merged = pd.read_parquet("estaciones.parquet")
     
-    # Limpieza de duplicados exactos
-    df_clima = df_clima.drop_duplicates(subset=["id_estacion", "fecha"]).reset_index(drop=True)
-    
-    # Filtro de nulos o valores anómalos
-    df_clima.loc[df_clima["precip"] < 0, "precip"] = 0.0
-    df_clima.loc[df_clima["precip"] == 0.0099, "precip"] = 0.0
-    df_clima.loc[df_clima["precip"] > 500, "precip"] = None
-    df_clima.loc[df_clima["tmax"] < -50, "tmax"] = None
-    df_clima.loc[df_clima["tmin"] < -50, "tmin"] = None
-    
+    # Cargar nómina de estaciones para metadatos y mapas
     df_nomina = pd.read_csv("nomina_estaciones.csv", dtype={"id_estacion": str})
-    cols_to_use = [c for c in df_nomina.columns if c not in df_clima.columns or c == "id_estacion"]
-    
-    df_merged = df_clima.merge(df_nomina[cols_to_use], on="id_estacion", how="left")
-    df_merged["fecha"] = pd.to_datetime(df_merged["fecha"])
     
     return df_merged, df_nomina
 
@@ -51,7 +38,10 @@ except Exception as e:
 
 # --- BARRA LATERAL: FILTROS ---
 st.sidebar.title("🎛️ Filtros de Selección")
-provincias = ["Todas"] + sorted([p for p in df["provincia"].dropna().unique()])
+
+# Obtener lista de provincias únicas
+provincias_unicas = sorted([p for p in df["provincia"].cat.categories if p in df["provincia"].values]) if isinstance(df["provincia"].dtype, pd.CategoricalDtype) else sorted(df["provincia"].dropna().unique())
+provincias = ["Todas"] + list(provincias_unicas)
 prov_sel = st.sidebar.selectbox("Seleccionar Provincia", provincias)
 
 df_filtrado = df[df["provincia"] == prov_sel] if prov_sel != "Todas" else df
@@ -147,8 +137,9 @@ if not df_estacion.empty:
     val_tmin = df_estacion.loc[idx_tmin, 'tmin'] if idx_tmin is not None else None
     fecha_tmin = df_estacion.loc[idx_tmin, 'fecha'].strftime('%d/%m/%Y') if idx_tmin is not None else "N/D"
 
-    df_estacion['anio'] = df_estacion['fecha'].dt.year
-    precip_anual_series = df_estacion.groupby('anio')['precip'].sum()
+    df_estacion_anio = df_estacion.copy()
+    df_estacion_anio['anio'] = df_estacion_anio['fecha'].dt.year
+    precip_anual_series = df_estacion_anio.groupby('anio')['precip'].sum()
     if not precip_anual_series.empty:
         max_anio = precip_anual_series.idxmax()
         max_anio_val = precip_anual_series.max()
@@ -188,10 +179,10 @@ with tab1:
         fig_temp.add_trace(go.Scatter(x=df_estacion['fecha'], y=df_estacion['tmax'], mode='lines', name='T. Máx (°C)', line=dict(color='#d9534f')))
         fig_temp.add_trace(go.Scatter(x=df_estacion['fecha'], y=df_estacion['tmin'], mode='lines', name='T. Mín (°C)', line=dict(color='#0275d8')))
         fig_temp.update_layout(title="Temperaturas Diarias", hovermode="x unified")
-        st.plotly_chart(fig_temp, use_container_width=True)
+        st.plotly_chart(fig_temp, width='content')
 
         fig_precip = px.bar(df_estacion, x='fecha', y='precip', title="Precipitación Diaria (mm)", color_discrete_sequence=['#5bc0de'])
-        st.plotly_chart(fig_precip, use_container_width=True)
+        st.plotly_chart(fig_precip, width='content')
 
 # 2. COMPARATIVA ENSO / INTERANUAL
 with tab2:
@@ -224,7 +215,7 @@ with tab2:
         fig_interanual.update_layout(
             xaxis=dict(tickmode='array', tickvals=tick_vals, ticktext=tick_texts)
         )
-        st.plotly_chart(fig_interanual, use_container_width=True)
+        st.plotly_chart(fig_interanual, width='content')
         
         st.markdown("---")
         
@@ -278,7 +269,7 @@ with tab2:
             category_orders={'anio': orden_anios}  # Forzar el orden del eje X
         )
         fig_enos_bar.update_xaxes(type='category')
-        st.plotly_chart(fig_enos_bar, use_container_width=True)
+        st.plotly_chart(fig_enos_bar, width='content')
 
 # 3. VISOR GEOGRÁFICO
 with tab3:
@@ -310,7 +301,7 @@ with tab3:
             fitbounds="locations"
         )
     )
-    st.plotly_chart(fig_map, use_container_width=True)
+    st.plotly_chart(fig_map, width='content')
 
 # 4. TABLAS Y RESÚMENES
 with tab4:
@@ -319,15 +310,16 @@ with tab4:
     if df_estacion.empty:
         st.warning("No hay datos para calcular resúmenes.")
     else:
-        df_estacion['tmedia'] = (df_estacion['tmax'] + df_estacion['tmin']) / 2
+        df_estacion_calc = df_estacion.copy()
+        df_estacion_calc['tmedia'] = (df_estacion_calc['tmax'] + df_estacion_calc['tmin']) / 2
         
         # SUB-PESTAÑA 1: RESUMEN MENSUAL
         with subtab1:
             st.subheader("Resumen Climatológico por Año-Mes")
-            df_estacion['Año_Mes'] = df_estacion['fecha'].dt.to_period('M')
+            df_estacion_calc['Año_Mes'] = df_estacion_calc['fecha'].dt.to_period('M')
             
             resumen_mensual = []
-            for periodo, group in df_estacion.groupby('Año_Mes'):
+            for periodo, group in df_estacion_calc.groupby('Año_Mes'):
                 idx_max = group['tmax'].idxmax() if group['tmax'].notnull().any() else None
                 idx_min = group['tmin'].idxmin() if group['tmin'].notnull().any() else None
                 
@@ -356,9 +348,9 @@ with tab4:
                 color_discrete_sequence=['#0275d8']
             )
             fig_bar_m.update_layout(xaxis_tickangle=-45)
-            st.plotly_chart(fig_bar_m, use_container_width=True)
+            st.plotly_chart(fig_bar_m, width='content')
             
-            st.dataframe(df_resumen_m, use_container_width=True, hide_index=True)
+            st.dataframe(df_resumen_m, width='content', hide_index=True)
             
             csv_m = df_resumen_m.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Descargar Resumen Mensual (CSV)", csv_m, f"Resumen_Mensual_{estacion_sel}.csv", "text/csv")
@@ -366,9 +358,10 @@ with tab4:
         # SUB-PESTAÑA 2: PRECIPITACIÓN ANUAL
         with subtab2:
             st.subheader("Precipitación Total por Año")
+            df_estacion_calc['anio'] = df_estacion_calc['fecha'].dt.year
             
             resumen_anual = []
-            for anio, group in df_estacion.groupby('anio'):
+            for anio, group in df_estacion_calc.groupby('anio'):
                 idx_pmax = group['precip'].idxmax() if group['precip'].notnull().any() else None
                 f_pmax = group.loc[idx_pmax, 'fecha'].strftime('%d/%m/%Y') if idx_pmax is not None else "-"
                 v_pmax = group.loc[idx_pmax, 'precip'] if idx_pmax is not None else 0.0
@@ -393,9 +386,9 @@ with tab4:
                 color_discrete_sequence=['#5bc0de']
             )
             fig_bar_a.update_xaxes(type='category')
-            st.plotly_chart(fig_bar_a, use_container_width=True)
+            st.plotly_chart(fig_bar_a, width='content')
             
-            st.dataframe(df_resumen_a, use_container_width=True, hide_index=True)
+            st.dataframe(df_resumen_a, width='content', hide_index=True)
             
             csv_a = df_resumen_a.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Descargar Precipitación Anual (CSV)", csv_a, f"Precipitación_Anual_{estacion_sel}.csv", "text/csv")
@@ -406,7 +399,7 @@ with tab4:
             df_export = df_estacion[['id_estacion', 'nombre', 'provincia', 'fecha', 'tmax', 'tmin', 'precip']].copy()
             df_export['fecha'] = df_export['fecha'].dt.strftime('%Y-%m-%d')
             
-            st.dataframe(df_export, use_container_width=True, hide_index=True)
+            st.dataframe(df_export, width='content', hide_index=True)
             
             csv_d = df_export.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Descargar Datos Diarios (CSV)", csv_d, f"Datos_Diarios_{estacion_sel}.csv", "text/csv")
