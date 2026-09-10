@@ -247,13 +247,25 @@ else:
     st.sidebar.warning("No hay datos en estaciones automáticas.")
     st.stop()
 
-# Garantizar que existan las columnas clave en la nómina activa
+# 1. Mapeo defensivo: asegurar que exista la columna 'nombre'
 if "nombre" not in df_nomina_active.columns:
-  df_nomina_active["nombre"] = df_nomina_active["id_estacion"]
+  col_posibles = [
+      c
+      for c in ["localidad", "estacion", "nombre_estacion", "id_estacion"]
+      if c in df_nomina_active.columns
+  ]
+  if col_posibles:
+    df_nomina_active = df_nomina_active.rename(
+        columns={col_posibles[0]: "nombre"}
+    )
+  else:
+    df_nomina_active["nombre"] = df_nomina_active.index.astype(str)
 
+# 2. Asegurar columna 'provincia'
 if "provincia" not in df_nomina_active.columns:
   df_nomina_active["provincia"] = "Sin Especificar"
 
+# 3. Filtrado por provincia
 provincias = ["Todas"] + sorted(
     df_nomina_active["provincia"].dropna().unique().tolist()
 )
@@ -264,6 +276,8 @@ df_nomina_filtrada = (
     if prov_sel != "Todas"
     else df_nomina_active
 )
+
+# 4. Obtención segura de lista de estaciones (evita el AttributeError)
 estaciones = sorted(df_nomina_filtrada["nombre"].dropna().unique().tolist())
 
 if not estaciones:
@@ -271,7 +285,6 @@ if not estaciones:
   st.stop()
 
 estacion_sel = st.sidebar.selectbox("Estación", estaciones)
-
 min_fecha, max_fecha = (
     df_active["fecha"].min().date(),
     df_active["fecha"].max().date(),
