@@ -109,24 +109,45 @@ with st.sidebar.expander("Seleccionar Meses", expanded=True):
 
 # Validación en caso de que no haya meses seleccionados
 if not meses_sel:
-    st.sidebar.warning("Por favor, selecciona al menos un mes para ver los datos.")
-    st.stop()
+  st.sidebar.warning(
+      "Por favor, selecciona al menos un mes para ver los datos."
+  )
+  st.stop()
 
-fecha_inicio, fecha_fin = (fechas_sel[0], fechas_sel[1]) if isinstance(fechas_sel, tuple) and len(fechas_sel) == 2 else (min_fecha, max_fecha)
+fecha_inicio, fecha_fin = (
+    (fechas_sel[0], fechas_sel[1])
+    if isinstance(fechas_sel, tuple) and len(fechas_sel) == 2
+    else (min_fecha, max_fecha)
+)
 
+# 1. Obtenemos primero la información de la nómina (si la selección viene de df_nomina)
+coincidencias_nomina = df_nomina[df_nomina["nombre"] == estacion_sel]
+
+if not coincidencias_nomina.empty:
+  info_estacion = coincidencias_nomina.iloc[0]
+  id_estacion_sel = info_estacion["id_estacion"]
+else:
+  # Si la selección viene por ID o por el nombre viejo, buscamos por ID
+  id_estacion_sel = df[df["nombre"] == estacion_sel]["id_estacion"].iloc[0]
+  info_estacion = df_nomina[
+      df_nomina["id_estacion"] == id_estacion_sel
+  ].iloc[0]
+
+# 2. Filtramos la tabla principal por id_estacion (mucho más robusto)
 df_estacion = df[
-    (df["nombre"] == estacion_sel) & 
-    (df["fecha"].dt.date >= fecha_inicio) & 
-    (df["fecha"].dt.date <= fecha_fin) &
-    (df["fecha"].dt.month.isin(meses_sel))
+    (df["id_estacion"] == id_estacion_sel)
+    & (df["fecha"].dt.date >= fecha_inicio)
+    & (df["fecha"].dt.date <= fecha_fin)
+    & (df["fecha"].dt.month.isin(meses_sel))
 ].sort_values("fecha")
-
-info_estacion = df_nomina[df_nomina["nombre"] == estacion_sel].iloc[0]
 
 # --- ENCABEZADO ---
 st.title(f"📊 {info_estacion['nombre']}")
-st.caption(f"**Provincia:** {info_estacion['provincia']} | **ID:** {info_estacion['id_estacion']} | **Altitud:** {info_estacion['altura']} msnm")
-
+st.caption(
+    f"**Provincia:** {info_estacion['provincia']} | **ID:**"
+    f" {info_estacion['id_estacion']} | **Altitud:** {info_estacion['altura']}"
+    " msnm"
+)
 # --- TARJETAS DE MÉTRICAS ---
 if not df_estacion.empty:
     idx_tmax = df_estacion['tmax'].idxmax() if df_estacion['tmax'].notnull().any() else None
