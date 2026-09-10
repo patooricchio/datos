@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -77,6 +78,16 @@ def obtener_fase_enso_fecha(dt):
   return TABLA_ENSO.get(ciclo, "Neutral")
 
 
+def limpiar_id(val):
+  """Remueve letras (como la 'A'), espacios o caracteres raros para dejar solo los dígitos."""
+  if pd.isna(val):
+    return ""
+  val_str = str(val).strip().upper()
+  # Extrae solo los dígitos numéricos de la cadena
+  digitos = re.sub(r"\D", "", val_str)
+  return digitos if digitos else val_str
+
+
 @st.cache_data
 def load_data():
   # 1. RED CONVENCIONAL
@@ -90,7 +101,10 @@ def load_data():
         "nomina_estaciones.csv", dtype={"id_estacion": str}
     )
 
-  df_conv["id_estacion"] = df_conv["id_estacion"].astype(str)
+  df_conv["id_estacion"] = df_conv["id_estacion"].apply(limpiar_id)
+  df_nomina_conv["id_estacion"] = df_nomina_conv["id_estacion"].apply(
+      limpiar_id
+  )
   df_conv["fecha"] = pd.to_datetime(df_conv["fecha"])
 
   for col in ["nombre", "provincia"]:
@@ -127,7 +141,11 @@ def load_data():
         renombrar_dict[col] = "lon"
 
     df_nomina_emas = df_nomina_emas.rename(columns=renombrar_dict)
-    df_nomina_emas["id_estacion"] = df_nomina_emas["id_estacion"].astype(str)
+
+    # Limpiar e igualar IDs en la nómina (remueve la 'A')
+    df_nomina_emas["id_estacion"] = df_nomina_emas["id_estacion"].apply(
+        limpiar_id
+    )
 
     if "altura" not in df_nomina_emas.columns:
       df_nomina_emas["altura"] = 0
@@ -135,11 +153,11 @@ def load_data():
   if os.path.exists("estaciones_automaticas.parquet"):
     df_auto = pd.read_parquet("estaciones_automaticas.parquet")
 
-    # Estandarizar nombre de columna de identificación
     if "Id" in df_auto.columns:
       df_auto = df_auto.rename(columns={"Id": "id_estacion"})
 
-    df_auto["id_estacion"] = df_auto["id_estacion"].astype(str)
+    # Limpiar e igualar IDs en las mediciones
+    df_auto["id_estacion"] = df_auto["id_estacion"].apply(limpiar_id)
     df_auto["fecha"] = pd.to_datetime(df_auto["fecha"])
 
     for col in ["nombre", "provincia"]:
@@ -154,7 +172,6 @@ def load_data():
       )
 
   return df_conv, df_nomina_conv, df_auto, df_nomina_emas
-
 
 try:
   df_conv, df_nomina_conv, df_auto, df_nomina_emas = load_data()
