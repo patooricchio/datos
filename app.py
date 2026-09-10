@@ -73,16 +73,13 @@ TABLA_ENSO = {
 def obtener_fase_enso_fecha(dt):
   anio = dt.year
   mes = dt.month
-  if mes >= 7:
-    ciclo = f"{anio}-{anio + 1}"
-  else:
-    ciclo = f"{anio - 1}-{anio}"
+  ciclo = f"{anio}-{anio + 1}" if mes >= 7 else f"{anio - 1}-{anio}"
   return TABLA_ENSO.get(ciclo, "Neutral")
 
 
 @st.cache_data
 def load_data():
-  # 1. Red Convencional (SMN / INTA)
+  # 1. RED CONVENCIONAL
   df_conv = pd.read_parquet("estaciones.parquet")
   try:
     df_nomina_conv = pd.read_csv(
@@ -94,10 +91,11 @@ def load_data():
     )
 
   df_conv["id_estacion"] = df_conv["id_estacion"].astype(str)
-  if "nombre" in df_conv.columns:
-    df_conv = df_conv.drop(columns=["nombre"])
-  if "provincia" in df_conv.columns:
-    df_conv = df_conv.drop(columns=["provincia"])
+  df_conv["fecha"] = pd.to_datetime(df_conv["fecha"])
+
+  for col in ["nombre", "provincia"]:
+    if col in df_conv.columns:
+      df_conv = df_conv.drop(columns=[col])
 
   df_conv = df_conv.merge(
       df_nomina_conv[["id_estacion", "nombre", "provincia"]],
@@ -105,7 +103,7 @@ def load_data():
       how="left",
   )
 
-  # 2. Red Automática (EMAS)
+  # 2. RED AUTOMÁTICA (EMAS)
   df_auto = pd.DataFrame()
   df_nomina_emas = pd.DataFrame()
 
@@ -122,11 +120,24 @@ def load_data():
             "Longitud": "lon",
         }
     )
-    df_nomina_emas["altura"] = 0
+    df_nomina_emas["id_estacion"] = df_nomina_emas["id_estacion"].astype(str)
+    if "altura" not in df_nomina_emas.columns:
+      df_nomina_emas["altura"] = 0
 
   if os.path.exists("estaciones_automaticas.parquet"):
     df_auto = pd.read_parquet("estaciones_automaticas.parquet")
     df_auto["id_estacion"] = df_auto["id_estacion"].astype(str)
+
+    # Estandarización de columna fecha si viniera como fecha_hora o similar
+    if "fecha" not in df_auto.columns and "fecha_hora" in df_auto.columns:
+      df_auto = df_auto.rename(columns={"fecha_hora": "fecha"})
+    df_auto["fecha"] = pd.to_datetime(df_auto["fecha"])
+
+    # Limpieza previa antes del merge para evitar sufijos (_x, _y)
+    for col in ["nombre", "provincia"]:
+      if col in df_auto.columns:
+        df_auto = df_auto.drop(columns=[col])
+
     if not df_nomina_emas.empty:
       df_auto = df_auto.merge(
           df_nomina_emas[["id_estacion", "nombre", "provincia"]],
@@ -159,8 +170,7 @@ else:
   df_nomina_active = df_nomina_emas
   if df_active.empty:
     st.sidebar.warning(
-        "⚠️ No se encontró el archivo 'estaciones_automaticas.parquet' en el"
-        " repositorio."
+        "⚠️ No se encontraron registros en 'estaciones_automaticas.parquet'."
     )
     st.stop()
 
@@ -572,8 +582,9 @@ with tab4:
       df_estacion_calc["anio"] = df_estacion_calc["fecha"].dt.year
       resumen_anual = []
       for anio, group in df_estacion_calc.groupby("anio"):
-        # Se toma la fase representativa del ciclo central del año (mes de Julio/Octubre)
-        fase_rep = obtener_fase_enso_fecha(pd.Timestamp(year=anio, month=10, day=1))
+        fase_rep = obtener_fase_enso_fecha(
+            pd.Timestamp(year=anio, month=10, day=1)
+        )
         resumen_anual.append({
             "Año": anio,
             "Fase ENOS": fase_rep,
