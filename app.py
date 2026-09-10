@@ -117,7 +117,6 @@ def obtener_fase_enso_anio(anio):
 
 @st.cache_data
 def load_data():
-  # Convencional
   df_conv = pd.read_parquet("estaciones.parquet")
   try:
     df_nomina_conv = pd.read_csv(
@@ -144,7 +143,6 @@ def load_data():
       how="left",
   )
 
-  # Automáticas (EMAS)
   df_auto = pd.DataFrame()
   df_nomina_emas = pd.DataFrame()
 
@@ -302,12 +300,10 @@ info_estacion = df_nomina_active[
 ].iloc[0]
 id_estacion_sel = str(info_estacion["id_estacion"])
 
-# Datos históricos completos de la estación seleccionada
 df_estacion_historico = df_active[
     df_active["id_estacion"] == id_estacion_sel
 ].copy()
 
-# Datos filtrados por rango de fecha y meses para la estación activa
 df_estacion = df_estacion_historico[
     (df_estacion_historico["fecha"].dt.date >= fecha_inicio)
     & (df_estacion_historico["fecha"].dt.date <= fecha_fin)
@@ -351,7 +347,6 @@ if not df_estacion.empty:
       else "N/D"
   )
 
-  # Cálculo de Año con Mayor Precipitación
   df_estacion_temp = df_estacion.copy()
   df_estacion_temp["anio"] = df_estacion_temp["fecha"].dt.year
   precip_anual_calc = (
@@ -424,7 +419,6 @@ with tab1:
   if df_estacion.empty:
     st.warning("No hay registros para la selección actual.")
   else:
-    # Media climatológica multianual por día-mes
     df_estacion_historico["dia_mes"] = df_estacion_historico[
         "fecha"
     ].dt.strftime("%m-%d")
@@ -435,7 +429,6 @@ with tab1:
     df_estacion["dia_mes"] = df_estacion["fecha"].dt.strftime("%m-%d")
     df_estacion["tmax_clim"] = df_estacion["dia_mes"].map(clim_tmax)
     df_estacion["tmin_clim"] = df_estacion["dia_mes"].map(clim_tmin)
-    df_estacion["precip_acum"] = df_estacion["precip"].cumsum()
 
     # Gráfico Tmax
     fig_tmax = go.Figure()
@@ -499,8 +492,8 @@ with tab1:
     )
     st.plotly_chart(fig_tmin, width="content")
 
-    # Gráfico Precipitación
-    fig_precip = make_subplots(specs=[[{"secondary_y": True}]])
+    # Gráfico Precipitación Diaria
+    fig_precip = go.Figure()
     fig_precip.add_trace(
         go.Bar(
             x=df_estacion["fecha"],
@@ -508,31 +501,13 @@ with tab1:
             name="Precipitación Diaria (mm)",
             marker_color="#0dcaf0",
             opacity=0.8,
-        ),
-        secondary_y=False,
-    )
-    fig_precip.add_trace(
-        go.Scatter(
-            x=df_estacion["fecha"],
-            y=df_estacion["precip_acum"],
-            name="Acumulado en el Período (mm)",
-            line=dict(color="#0b5ed7", width=2.5, dash="dash"),
-        ),
-        secondary_y=True,
+        )
     )
     fig_precip.update_layout(
-        title="Precipitación Diaria vs. Acumulado",
+        title="Precipitación Diaria",
         hovermode="x unified",
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-        ),
+        yaxis_title="Lluvia Diaria (mm)",
         margin=dict(l=20, r=20, t=50, b=20),
-    )
-    fig_precip.update_yaxes(
-        title_text="Lluvia Diaria (mm)", secondary_y=False
-    )
-    fig_precip.update_yaxes(
-        title_text="Acumulado (mm)", secondary_y=True
     )
     st.plotly_chart(fig_precip, width="content")
 
@@ -540,7 +515,6 @@ with tab1:
 with tab2:
   st.subheader("Análisis Interanual y Fases ENSO (El Niño / La Niña / Neutral)")
 
-  # 1. Gráfico de Evolución Mensual
   if not df_estacion.empty:
     df_enso = df_estacion.copy()
     df_enso["anio"] = df_enso["fecha"].dt.year
@@ -550,6 +524,37 @@ with tab2:
         df_enso["anio"].astype(str) + " (" + df_enso["Fase_ENSO"] + ")"
     )
 
+    # --- NUEVO GRÁFICO: PRECIPITACIÓN TOTAL ANUAL SEGÚN FASE ENSO ---
+    df_precip_anual = (
+        df_enso.groupby(["anio", "Fase_ENSO"])["precip"]
+        .sum(min_count=1)
+        .reset_index()
+        .sort_values("anio")
+    )
+
+    fig_precip_enso = px.bar(
+        df_precip_anual,
+        x="anio",
+        y="precip",
+        color="Fase_ENSO",
+        title="Precipitación Total Anual según Clasificación ENSO (Orden Cronológico)",
+        labels={
+            "anio": "Año",
+            "precip": "Precipitación Acumulada (mm)",
+            "Fase_ENSO": "Fase ENSO",
+        },
+        color_discrete_map={
+            "El Niño": "#dc3545",
+            "La Niña": "#0d6efd",
+            "Neutral": "#28a745",
+        },
+    )
+    fig_precip_enso.update_layout(xaxis=dict(type="category"))
+    st.plotly_chart(fig_precip_enso, width="content")
+
+    st.markdown("---")
+
+    # 1. Gráfico de Evolución Mensual
     var_enso = st.selectbox(
         "Seleccioná la variable a comparar por año y Fase ENSO:",
         [
@@ -608,7 +613,6 @@ with tab2:
   st.markdown("---")
   st.subheader("🗺️ Mapa Interanual por Estación catalogado por Fase ENSO")
 
-  # Construcción del dataset global anual para el mapa interanual ENSO
   df_map_active = df_active.copy()
   df_map_active["anio"] = df_map_active["fecha"].dt.year
   df_map_active["Fase_ENSO"] = df_map_active["fecha"].apply(
@@ -717,7 +721,6 @@ with tab3:
       projection="mercator",
   )
 
-  # Subdivisiones políticas/provinciales
   fig_map.update_geos(
       showsubunits=True,
       subunitcolor="#6c757d",
