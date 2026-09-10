@@ -20,35 +20,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-import streamlit as st
-import pandas as pd
-
-# 1. Cargar la nómina de estaciones (coordenadas, provincias, nombres)
 @st.cache_data
-def cargar_estaciones():
-    df_est = pd.read_parquet("estaciones.parquet")
-    # Asegurar tipos
-    df_est["id_estacion"] = df_est["id_estacion"].astype(str).str.zfill(5)
-    return df_est
-
-# 2. Cargar las mediciones climáticas (fechas, temperaturas, precipitación)
-@st.cache_data
-def cargar_mediciones():
-    # Asegúrate de colocar aquí el archivo real que contiene la columna 'fecha' y las mediciones
-    df_med = pd.read_parquet("datos_cache.parquet") 
-    df_med["id_estacion"] = df_med["id_estacion"].astype(str).str.zfill(5)
-    return df_med
-
-# Cargar ambos DataFrames
-df_estaciones = cargar_estaciones()
-
-try:
-    df_mediciones = cargar_mediciones()
-    # Unir mediciones con los metadatos de provincia y nombre
-    df_completo = df_mediciones.merge(df_estaciones, on="id_estacion", how="left")
-except Exception as e:
-    st.warning("No se pudieron cargar las mediciones. Mostrando solo el catálogo de estaciones.")
-    df_completo = df_estaciones
+def load_data():
+    df_clima = pd.read_parquet("estaciones.parquet")
+    df_clima["id_estacion"] = df_clima["id_estacion"].astype(str)
+    
+    # Limpieza de duplicados exactos
+    df_clima = df_clima.drop_duplicates(subset=["id_estacion", "fecha"]).reset_index(drop=True)
     
     # Filtro de nulos o valores anómalos
     df_clima.loc[df_clima["precip"] < 0, "precip"] = 0.0
@@ -63,7 +41,7 @@ except Exception as e:
     df_merged = df_clima.merge(df_nomina[cols_to_use], on="id_estacion", how="left")
     df_merged["fecha"] = pd.to_datetime(df_merged["fecha"])
     
-   # return df_merged, df_nomina
+    return df_merged, df_nomina
 
 try:
     df, df_nomina = load_data()
