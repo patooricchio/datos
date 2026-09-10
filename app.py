@@ -108,16 +108,14 @@ def load_data():
   df_nomina_emas = pd.DataFrame()
 
   if os.path.exists("listado_emas.csv"):
-    # Se detecta si usa separador ';' o ','
     df_nomina_emas = pd.read_csv(
         "listado_emas.csv", sep=None, engine="python", encoding="latin-1"
     )
 
-    # Estandarización explícita reconociendo 'Id'
     renombrar_dict = {}
     for col in df_nomina_emas.columns:
       col_lower = col.strip().lower()
-      if col_lower == "id":
+      if col_lower in ["id", "id_estacion"]:
         renombrar_dict[col] = "id_estacion"
       elif col_lower == "nombre":
         renombrar_dict[col] = "nombre"
@@ -137,18 +135,13 @@ def load_data():
   if os.path.exists("estaciones_automaticas.parquet"):
     df_auto = pd.read_parquet("estaciones_automaticas.parquet")
 
-    # Mapeo por si en el parquet la columna de ID se llama 'Id' o 'id_estacion'
+    # Estandarizar nombre de columna de identificación
     if "Id" in df_auto.columns:
       df_auto = df_auto.rename(columns={"Id": "id_estacion"})
 
     df_auto["id_estacion"] = df_auto["id_estacion"].astype(str)
-
-    if "fecha" not in df_auto.columns and "fecha_hora" in df_auto.columns:
-      df_auto = df_auto.rename(columns={"fecha_hora": "fecha"})
-
     df_auto["fecha"] = pd.to_datetime(df_auto["fecha"])
 
-    # Se remueven 'nombre' y 'provincia' previas para evitar colisiones (_x, _y)
     for col in ["nombre", "provincia"]:
       if col in df_auto.columns:
         df_auto = df_auto.drop(columns=[col])
