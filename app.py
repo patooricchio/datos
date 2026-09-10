@@ -8,7 +8,7 @@ st.set_page_config(
     page_title="Visor Climatológico - Argentina", page_icon="🌤️", layout="wide"
 )
 
-# CSS personalizado para adaptar métricas a pantallas chicas (notebooks 13")
+# CSS personalizado para métricas
 st.markdown(
     """
 <style>
@@ -19,6 +19,65 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
+TABLA_ENSO = {
+    "1980-1981": "Neutral",
+    "1981-1982": "Neutral",
+    "1982-1983": "El Niño",
+    "1983-1984": "La Niña",
+    "1984-1985": "La Niña",
+    "1985-1986": "Neutral",
+    "1986-1987": "El Niño",
+    "1987-1988": "El Niño",
+    "1988-1989": "La Niña",
+    "1989-1990": "Neutral",
+    "1990-1991": "Neutral",
+    "1991-1992": "El Niño",
+    "1992-1993": "Neutral",
+    "1993-1994": "Neutral",
+    "1994-1995": "El Niño",
+    "1995-1996": "La Niña",
+    "1996-1997": "Neutral",
+    "1997-1998": "El Niño",
+    "1998-1999": "La Niña",
+    "1999-2000": "La Niña",
+    "2000-2001": "La Niña",
+    "2001-2002": "Neutral",
+    "2002-2003": "El Niño",
+    "2003-2004": "Neutral",
+    "2004-2005": "El Niño",
+    "2005-2006": "La Niña",
+    "2006-2007": "El Niño",
+    "2007-2008": "La Niña",
+    "2008-2009": "La Niña",
+    "2009-2010": "El Niño",
+    "2010-2011": "La Niña",
+    "2011-2012": "La Niña",
+    "2012-2013": "Neutral",
+    "2013-2014": "Neutral",
+    "2014-2015": "El Niño",
+    "2015-2016": "El Niño",
+    "2016-2017": "Neutral",
+    "2017-2018": "La Niña",
+    "2018-2019": "El Niño",
+    "2019-2020": "El Niño",
+    "2020-2021": "La Niña",
+    "2021-2022": "La Niña",
+    "2022-2023": "La Niña",
+    "2023-2024": "El Niño",
+    "2024-2025": "La Niña",
+    "2025-2026": "Neutral",
+}
+
+
+def obtener_fase_enso_fecha(dt):
+  anio = dt.year
+  mes = dt.month
+  if mes >= 7:
+    ciclo = f"{anio}-{anio + 1}"
+  else:
+    ciclo = f"{anio - 1}-{anio}"
+  return TABLA_ENSO.get(ciclo, "Neutral")
 
 
 @st.cache_data
@@ -340,29 +399,32 @@ with tab1:
 
 # 2. COMPARATIVA ENSO / INTERANUAL
 with tab2:
-  st.subheader("Análisis Interanual y Fases ENOS")
+  st.subheader("Análisis Interanual y Fases El Niño / La Niña (ENSO)")
+
   if df_estacion.empty:
-    st.warning("No hay datos disponibles.")
+    st.warning("No hay datos disponibles para la estación seleccionada.")
   else:
-    df_estacion_copy = df_estacion.copy()
-    df_estacion_copy["mes_num"] = df_estacion_copy["fecha"].dt.month
-    df_estacion_copy["anio_str"] = df_estacion_copy["fecha"].dt.year.astype(str)
-    df_estacion_copy["anio"] = df_estacion_copy["fecha"].dt.year
+    df_enso = df_estacion.copy()
+    df_enso["anio"] = df_enso["fecha"].dt.year
+    df_enso["mes_num"] = df_enso["fecha"].dt.month
+    df_enso["Fase_ENSO"] = df_enso["fecha"].apply(obtener_fase_enso_fecha)
 
     df_mensual = (
-        df_estacion_copy.groupby(["anio_str", "mes_num"])["precip"]
+        df_enso.groupby(["anio", "mes_num", "Fase_ENSO"])["precip"]
         .sum(min_count=1)
         .reset_index()
     )
+    df_mensual["anio_str"] = df_mensual["anio"].astype(str)
+
     fig_interanual = px.line(
         df_mensual,
         x="mes_num",
         y="precip",
         color="anio_str",
         markers=True,
-        title="Evolución de Precipitación Mensual por Año",
+        title="Precipitación Mensual por Año",
         labels={
-            "mes_num": "Mes del Año",
+            "mes_num": "Mes",
             "precip": "Precipitación (mm)",
             "anio_str": "Año",
         },
@@ -373,6 +435,63 @@ with tab2:
         xaxis=dict(tickmode="array", tickvals=tick_vals, ticktext=tick_texts)
     )
     st.plotly_chart(fig_interanual, width="content")
+
+    st.markdown("---")
+    st.subheader("📊 Comportamiento Medio según Fase ENOS")
+
+    df_fases = (
+        df_enso.groupby(["Fase_ENSO", "mes_num"])
+        .agg({"precip": "mean", "tmax": "mean", "tmin": "mean"})
+        .reset_index()
+    )
+
+    color_map_enso = {
+        "El Niño": "#d9534f",
+        "La Niña": "#0275d8",
+        "Neutral": "#5cb85c",
+    }
+
+    col_e1, col_e2 = st.columns(2)
+
+    with col_e1:
+      fig_enso_precip = px.bar(
+          df_fases,
+          x="mes_num",
+          y="precip",
+          color="Fase_ENSO",
+          barmode="group",
+          color_discrete_map=color_map_enso,
+          title="Precipitación Media Mensual por Fase ENOS (mm)",
+          labels={
+              "mes_num": "Mes",
+              "precip": "Precipitación Media (mm)",
+              "Fase_ENSO": "Fase",
+          },
+      )
+      fig_enso_precip.update_layout(
+          xaxis=dict(tickmode="array", tickvals=tick_vals, ticktext=tick_texts)
+      )
+      st.plotly_chart(fig_enso_precip, width="content")
+
+    with col_e2:
+      fig_enso_tmax = px.line(
+          df_fases,
+          x="mes_num",
+          y="tmax",
+          color="Fase_ENSO",
+          markers=True,
+          color_discrete_map=color_map_enso,
+          title="Tº Máxima Promedio por Fase ENOS (°C)",
+          labels={
+              "mes_num": "Mes",
+              "tmax": "Tº Máxima (°C)",
+              "Fase_ENSO": "Fase",
+          },
+      )
+      fig_enso_tmax.update_layout(
+          xaxis=dict(tickmode="array", tickvals=tick_vals, ticktext=tick_texts)
+      )
+      st.plotly_chart(fig_enso_tmax, width="content")
 
 # 3. VISOR GEOGRÁFICO
 with tab3:
@@ -453,8 +572,11 @@ with tab4:
       df_estacion_calc["anio"] = df_estacion_calc["fecha"].dt.year
       resumen_anual = []
       for anio, group in df_estacion_calc.groupby("anio"):
+        # Se toma la fase representativa del ciclo central del año (mes de Julio/Octubre)
+        fase_rep = obtener_fase_enso_fecha(pd.Timestamp(year=anio, month=10, day=1))
         resumen_anual.append({
             "Año": anio,
+            "Fase ENOS": fase_rep,
             "Precip. Acumulada (mm)": round(group["precip"].sum(), 1),
             "Días con Precipitación (>0.1mm)": int(
                 (group["precip"] > 0.1).sum()
