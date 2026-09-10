@@ -133,16 +133,43 @@ def load_data():
   )
   df_conv["fecha"] = pd.to_datetime(df_conv["fecha"])
 
-  for col in ["nombre", "provincia"]:
-    if col in df_conv.columns:
-      df_conv = df_conv.drop(columns=[col])
+  # Redondeo de precipitación a 1 decimal
+  if "precip" in df_conv.columns:
+    df_conv["precip"] = df_conv["precip"].round(1)
+
+  # Limpieza de columnas duplicadas o repetidas en convencionales
+  cols_eliminar_conv = [
+      "nombre",
+      "provincia",
+      "latitud",
+      "longitud",
+      "altitud",
+      "localidad",
+      "lat",
+      "lon",
+      "altura",
+  ]
+  cols_existentes_conv = [c for c in cols_eliminar_conv if c in df_conv.columns]
+  df_conv = df_conv.drop(columns=cols_existentes_conv)
+
+  # Normalización de nómina convencional
+  renom_nomina = {
+      "localidad": "nombre",
+      "latitud": "lat",
+      "longitud": "lon",
+      "altitud": "altura",
+  }
+  df_nomina_conv = df_nomina_conv.rename(columns=renom_nomina)
+
+  # Columnas a conservar en merge de nómina
+  cols_merge = ["id_estacion", "nombre", "provincia", "lat", "lon", "altura"]
+  cols_merge_conv = [c for c in cols_merge if c in df_nomina_conv.columns]
 
   df_conv = df_conv.merge(
-      df_nomina_conv[["id_estacion", "nombre", "provincia"]],
-      on="id_estacion",
-      how="left",
+      df_nomina_conv[cols_merge_conv], on="id_estacion", how="left"
   )
 
+  # Automáticas (EMAS)
   df_auto = pd.DataFrame()
   df_nomina_emas = pd.DataFrame()
 
@@ -156,14 +183,16 @@ def load_data():
       col_lower = col.strip().lower()
       if col_lower in ["id", "id_estacion"]:
         renombrar_dict[col] = "id_estacion"
-      elif col_lower == "nombre":
+      elif col_lower in ["nombre", "localidad"]:
         renombrar_dict[col] = "nombre"
       elif col_lower == "provincia":
         renombrar_dict[col] = "provincia"
-      elif col_lower == "latitud":
+      elif col_lower in ["latitud", "lat"]:
         renombrar_dict[col] = "lat"
-      elif col_lower == "longitud":
+      elif col_lower in ["longitud", "lon"]:
         renombrar_dict[col] = "lon"
+      elif col_lower in ["altitud", "altura"]:
+        renombrar_dict[col] = "altura"
 
     df_nomina_emas = df_nomina_emas.rename(columns=renombrar_dict)
     df_nomina_emas["id_estacion"] = df_nomina_emas["id_estacion"].apply(
@@ -182,15 +211,18 @@ def load_data():
     df_auto["id_estacion"] = df_auto["id_estacion"].apply(limpiar_id)
     df_auto["fecha"] = pd.to_datetime(df_auto["fecha"])
 
-    for col in ["nombre", "provincia"]:
-      if col in df_auto.columns:
-        df_auto = df_auto.drop(columns=[col])
+    if "precip" in df_auto.columns:
+      df_auto["precip"] = df_auto["precip"].round(1)
+
+    cols_existentes_auto = [
+        c for c in cols_eliminar_conv if c in df_auto.columns
+    ]
+    df_auto = df_auto.drop(columns=cols_existentes_auto)
 
     if not df_nomina_emas.empty:
+      cols_merge_emas = [c for c in cols_merge if c in df_nomina_emas.columns]
       df_auto = df_auto.merge(
-          df_nomina_emas[["id_estacion", "nombre", "provincia"]],
-          on="id_estacion",
-          how="left",
+          df_nomina_emas[cols_merge_emas], on="id_estacion", how="left"
       )
 
   return df_conv, df_nomina_conv, df_auto, df_nomina_emas
@@ -524,7 +556,7 @@ with tab2:
         df_enso["anio"].astype(str) + " (" + df_enso["Fase_ENSO"] + ")"
     )
 
-    # --- NUEVO GRÁFICO: PRECIPITACIÓN TOTAL ANUAL SEGÚN FASE ENSO ---
+    # --- GRÁFICO: PRECIPITACIÓN TOTAL ANUAL CRONOLÓGICA ---
     df_precip_anual = (
         df_enso.groupby(["anio", "Fase_ENSO"])["precip"]
         .sum(min_count=1)
@@ -532,14 +564,16 @@ with tab2:
         .sort_values("anio")
     )
 
+    df_precip_anual["anio_str"] = df_precip_anual["anio"].astype(str)
+
     fig_precip_enso = px.bar(
         df_precip_anual,
-        x="anio",
+        x="anio_str",
         y="precip",
         color="Fase_ENSO",
         title="Precipitación Total Anual según Clasificación ENSO (Orden Cronológico)",
         labels={
-            "anio": "Año",
+            "anio_str": "Año",
             "precip": "Precipitación Acumulada (mm)",
             "Fase_ENSO": "Fase ENSO",
         },
@@ -549,12 +583,17 @@ with tab2:
             "Neutral": "#28a745",
         },
     )
-    fig_precip_enso.update_layout(xaxis=dict(type="category"))
+    fig_precip_enso.update_layout(
+        xaxis_title="Año",
+        xaxis=dict(type="category"),
+        barmode="group",
+        hovermode="x",
+    )
     st.plotly_chart(fig_precip_enso, width="content")
 
     st.markdown("---")
 
-    # 1. Gráfico de Evolución Mensual
+    # Gráfico de Evolución Mensual
     var_enso = st.selectbox(
         "Seleccioná la variable a comparar por año y Fase ENSO:",
         [
