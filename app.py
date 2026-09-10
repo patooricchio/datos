@@ -108,32 +108,47 @@ def load_data():
   df_nomina_emas = pd.DataFrame()
 
   if os.path.exists("listado_emas.csv"):
+    # Se detecta si usa separador ';' o ','
     df_nomina_emas = pd.read_csv(
-        "listado_emas.csv", sep=";", encoding="latin-1", dtype={"Id": str}
+        "listado_emas.csv", sep=None, engine="python", encoding="latin-1"
     )
-    df_nomina_emas = df_nomina_emas.rename(
-        columns={
-            "Id": "id_estacion",
-            "Nombre": "nombre",
-            "Provincia": "provincia",
-            "Latitud": "lat",
-            "Longitud": "lon",
-        }
-    )
+
+    # Estandarización explícita reconociendo 'Id'
+    renombrar_dict = {}
+    for col in df_nomina_emas.columns:
+      col_lower = col.strip().lower()
+      if col_lower == "id":
+        renombrar_dict[col] = "id_estacion"
+      elif col_lower == "nombre":
+        renombrar_dict[col] = "nombre"
+      elif col_lower == "provincia":
+        renombrar_dict[col] = "provincia"
+      elif col_lower == "latitud":
+        renombrar_dict[col] = "lat"
+      elif col_lower == "longitud":
+        renombrar_dict[col] = "lon"
+
+    df_nomina_emas = df_nomina_emas.rename(columns=renombrar_dict)
     df_nomina_emas["id_estacion"] = df_nomina_emas["id_estacion"].astype(str)
+
     if "altura" not in df_nomina_emas.columns:
       df_nomina_emas["altura"] = 0
 
   if os.path.exists("estaciones_automaticas.parquet"):
     df_auto = pd.read_parquet("estaciones_automaticas.parquet")
+
+    # Mapeo por si en el parquet la columna de ID se llama 'Id' o 'id_estacion'
+    if "Id" in df_auto.columns:
+      df_auto = df_auto.rename(columns={"Id": "id_estacion"})
+
     df_auto["id_estacion"] = df_auto["id_estacion"].astype(str)
 
-    # Estandarización de columna fecha si viniera como fecha_hora o similar
     if "fecha" not in df_auto.columns and "fecha_hora" in df_auto.columns:
       df_auto = df_auto.rename(columns={"fecha_hora": "fecha"})
+
     df_auto["fecha"] = pd.to_datetime(df_auto["fecha"])
 
-    # Limpieza previa antes del merge para evitar sufijos (_x, _y)
+    # Se remueven 'nombre' y 'provincia' previas para evitar colisiones (_x, _y)
     for col in ["nombre", "provincia"]:
       if col in df_auto.columns:
         df_auto = df_auto.drop(columns=[col])
