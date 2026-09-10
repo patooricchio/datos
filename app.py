@@ -63,7 +63,7 @@ except Exception as e:
     df_merged = df_clima.merge(df_nomina[cols_to_use], on="id_estacion", how="left")
     df_merged["fecha"] = pd.to_datetime(df_merged["fecha"])
     
-    return df_merged, df_nomina
+   # return df_merged, df_nomina
 
 try:
     df, df_nomina = load_data()
