@@ -409,109 +409,131 @@ st.markdown("---")
 # --- PESTAÑAS PRINCIPALES ---
 tab1, tab2, tab3, tab4 = st.tabs([
     "📈 Series Diarias y Climatología",
-    "🗓️ ENSO y Mapa Interanual",
+    "🗓️ ENSO e Interanual",
     "🗺️ Visor Geográfico",
     "📋 Tablas y Resúmenes",
 ])
 
-# 1. SERIES DIARIAS Y CLIMATOLOGÍA
+# 1. SERIES Y CLIMATOLOGÍA MENSUAL
 with tab1:
   if df_estacion.empty:
     st.warning("No hay registros para la selección actual.")
   else:
-    df_estacion_historico["dia_mes"] = df_estacion_historico[
-        "fecha"
-    ].dt.strftime("%m-%d")
+    # Preparación de datos mensuales del rango seleccionado
+    df_m_est = df_estacion.copy()
+    df_m_est["anio"] = df_m_est["fecha"].dt.year
+    df_m_est["mes_num"] = df_m_est["fecha"].dt.month
 
-    clim_tmax = df_estacion_historico.groupby("dia_mes")["tmax"].mean()
-    clim_tmin = df_estacion_historico.groupby("dia_mes")["tmin"].mean()
+    # Agregación mensual para el rango seleccionado
+    resumen_m = (
+        df_m_est.groupby(["anio", "mes_num"])
+        .agg(
+            tmax_mean=("tmax", "mean"),
+            tmin_mean=("tmin", "mean"),
+            precip_sum=("precip", "sum"),
+        )
+        .reset_index()
+    )
 
-    df_estacion["dia_mes"] = df_estacion["fecha"].dt.strftime("%m-%d")
-    df_estacion["tmax_clim"] = df_estacion["dia_mes"].map(clim_tmax)
-    df_estacion["tmin_clim"] = df_estacion["dia_mes"].map(clim_tmin)
+    # Climatología histórica (media mensual de todo el registro histórico de la estación)
+    df_hist = df_estacion_historico.copy()
+    df_hist["mes_num"] = df_hist["fecha"].dt.month
+    clim_mensual = (
+        df_hist.groupby("mes_num")
+        .agg(
+            tmax_clim=("tmax", "mean"),
+            tmin_clim=("tmin", "mean"),
+            precip_clim=("precip", "mean"),
+        )
+        .reset_index()
+    )
 
-    # Gráfico Tmax
-    fig_tmax = go.Figure()
-    fig_tmax.add_trace(
+    t_vals = list(dict_meses.keys())
+    t_text = [dict_meses[m][:3] for m in t_vals]
+
+    # --- 1. GRÁFICO TEMPERATURA MÁXIMA PROMEDIO MENSUAL ---
+    fig_tmax_m = px.line(
+        resumen_m,
+        x="mes_num",
+        y="tmax_mean",
+        color="anio",
+        markers=True,
+        title="Temperatura Máxima Promedio Mensual por Año",
+        labels={
+            "mes_num": "Mes",
+            "tmax_mean": "T° Máx Promedio (°C)",
+            "anio": "Año",
+        },
+    )
+    # Agregar línea de referencia Climatológica
+    fig_tmax_m.add_trace(
         go.Scatter(
-            x=df_estacion["fecha"],
-            y=df_estacion["tmax"],
-            mode="lines",
-            name="T° Máxima Diaria",
-            line=dict(color="#dc3545", width=1.8),
+            x=clim_mensual["mes_num"],
+            y=clim_mensual["tmax_clim"],
+            mode="lines+markers",
+            name="Media Climatológica Histórica",
+            line=dict(color="#212529", width=3, dash="dash"),
         )
     )
-    fig_tmax.add_trace(
-        go.Scatter(
-            x=df_estacion["fecha"],
-            y=df_estacion["tmax_clim"],
-            mode="lines",
-            name="Media Climatológica T° Máx",
-            line=dict(color="#6c757d", width=2, dash="dash"),
-        )
-    )
-    fig_tmax.update_layout(
-        title="Evolución de Temperatura Máxima Diaria vs. Media Climatológica",
+    fig_tmax_m.update_layout(
+        xaxis=dict(tickmode="array", tickvals=t_vals, ticktext=t_text),
         hovermode="x unified",
-        yaxis_title="Temperatura (°C)",
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-        ),
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_tmax, width="content")
+    st.plotly_chart(fig_tmax_m, use_container_width=True)
 
-    # Gráfico Tmin
-    fig_tmin = go.Figure()
-    fig_tmin.add_trace(
+    # --- 2. GRÁFICO TEMPERATURA MÍNIMA PROMEDIO MENSUAL ---
+    fig_tmin_m = px.line(
+        resumen_m,
+        x="mes_num",
+        y="tmin_mean",
+        color="anio",
+        markers=True,
+        title="Temperatura Mínima Promedio Mensual por Año",
+        labels={
+            "mes_num": "Mes",
+            "tmin_mean": "T° Mín Promedio (°C)",
+            "anio": "Año",
+        },
+    )
+    fig_tmin_m.add_trace(
         go.Scatter(
-            x=df_estacion["fecha"],
-            y=df_estacion["tmin"],
-            mode="lines",
-            name="T° Mínima Diaria",
-            line=dict(color="#0d6efd", width=1.8),
+            x=clim_mensual["mes_num"],
+            y=clim_mensual["tmin_clim"],
+            mode="lines+markers",
+            name="Media Climatológica Histórica",
+            line=dict(color="#212529", width=3, dash="dash"),
         )
     )
-    fig_tmin.add_trace(
-        go.Scatter(
-            x=df_estacion["fecha"],
-            y=df_estacion["tmin_clim"],
-            mode="lines",
-            name="Media Climatológica T° Mín",
-            line=dict(color="#6c757d", width=2, dash="dash"),
-        )
-    )
-    fig_tmin.update_layout(
-        title="Evolución de Temperatura Mínima Diaria vs. Media Climatológica",
+    fig_tmin_m.update_layout(
+        xaxis=dict(tickmode="array", tickvals=t_vals, ticktext=t_text),
         hovermode="x unified",
-        yaxis_title="Temperatura (°C)",
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-        ),
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_tmin, width="content")
+    st.plotly_chart(fig_tmin_m, use_container_width=True)
 
-    # Gráfico Precipitación Diaria
-    fig_precip = go.Figure()
-    fig_precip.add_trace(
-        go.Bar(
-            x=df_estacion["fecha"],
-            y=df_estacion["precip"],
-            name="Precipitación Diaria (mm)",
-            marker_color="#0dcaf0",
-            opacity=0.8,
-        )
+    # --- 3. GRÁFICO PRECIPITACIÓN ACUMULADA MENSUAL ---
+    fig_precip_m = px.bar(
+        resumen_m,
+        x="mes_num",
+        y="precip_sum",
+        color="anio",
+        barmode="group",
+        title="Precipitación Acumulada Mensual Comparativa por Año",
+        labels={
+            "mes_num": "Mes",
+            "precip_sum": "Precipitación Acumulada (mm)",
+            "anio": "Año",
+        },
     )
-    fig_precip.update_layout(
-        title="Precipitación Diaria",
+    fig_precip_m.update_layout(
+        xaxis=dict(tickmode="array", tickvals=t_vals, ticktext=t_text),
         hovermode="x unified",
-        yaxis_title="Lluvia Diaria (mm)",
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_precip, width="content")
+    st.plotly_chart(fig_precip_m, use_container_width=True)
 
-# 2. ENSO Y MAPA INTERANUAL POR AÑO
+# 2. ENSO Y ANÁLISIS INTERANUAL
 with tab2:
   st.subheader("Análisis Interanual y Fases ENSO (El Niño / La Niña / Neutral)")
 
@@ -524,12 +546,12 @@ with tab2:
         df_enso["anio"].astype(str) + " (" + df_enso["Fase_ENSO"] + ")"
     )
 
-    # --- NUEVO GRÁFICO: PRECIPITACIÓN TOTAL ANUAL SEGÚN FASE ENSO ---
+    # --- GRÁFICO: PRECIPITACIÓN TOTAL ANUAL SEGÚN FASE ENSO ---
     df_precip_anual = (
         df_enso.groupby(["anio", "Fase_ENSO"])["precip"]
         .sum(min_count=1)
         .reset_index()
-        .sort_values("anio")
+        .sort_values("anio", ascending=True)
     )
 
     fig_precip_enso = px.bar(
@@ -549,12 +571,15 @@ with tab2:
             "Neutral": "#28a745",
         },
     )
-    fig_precip_enso.update_layout(xaxis=dict(type="category"))
+    # Forzamos el eje X a estar ordenado cronológicamente (de más antiguo a más nuevo)
+    fig_precip_enso.update_layout(
+        xaxis=dict(type="category", categoryorder="category ascending")
+    )
     st.plotly_chart(fig_precip_enso, width="content")
 
     st.markdown("---")
 
-    # 1. Gráfico de Evolución Mensual
+    # --- GRÁFICO DE EVOLUCIÓN MENSUAL ---
     var_enso = st.selectbox(
         "Seleccioná la variable a comparar por año y Fase ENSO:",
         [
@@ -589,6 +614,9 @@ with tab2:
       col_y = "tmin"
       title_y = "T° Mínima Promedio Mensual (°C)"
 
+    # Asegurar orden cronológico
+    df_m = df_m.sort_values(by=["anio", "mes_num"])
+
     fig_interanual = px.line(
         df_m,
         x="mes_num",
@@ -610,135 +638,54 @@ with tab2:
     )
     st.plotly_chart(fig_interanual, width="content")
 
-  st.markdown("---")
-  st.subheader("🗺️ Mapa Interanual por Estación catalogado por Fase ENSO")
-
-  df_map_active = df_active.copy()
-  df_map_active["anio"] = df_map_active["fecha"].dt.year
-  df_map_active["Fase_ENSO"] = df_map_active["fecha"].apply(
-      obtener_fase_enso_fecha
-  )
-
-  df_map_anual = (
-      df_map_active.groupby(["id_estacion", "anio", "Fase_ENSO"])[
-          ["precip", "tmax", "tmin"]
-      ]
-      .agg({"precip": "sum", "tmax": "mean", "tmin": "mean"})
-      .reset_index()
-  )
-
-  df_map_anual = df_map_anual.merge(
-      df_nomina_active[["id_estacion", "nombre", "provincia", "lat", "lon"]],
-      on="id_estacion",
-      how="inner",
-  ).dropna(subset=["lat", "lon"])
-
-  if not df_map_anual.empty:
-    df_map_anual["Año_Str"] = df_map_anual["anio"].astype(str)
-    df_map_anual["Label_Completa"] = (
-        df_map_anual["nombre"]
-        + " | "
-        + df_map_anual["Fase_ENSO"]
-        + " ("
-        + df_map_anual["Año_Str"]
-        + ")"
-    )
-
-    fig_enso_map = px.scatter_geo(
-        df_map_anual,
-        lat="lat",
-        lon="lon",
-        color="Fase_ENSO",
-        size="precip",
-        hover_name="nombre",
-        hover_data={
-            "provincia": True,
-            "Fase_ENSO": True,
-            "anio": True,
-            "precip": ":.1f",
-            "tmax": ":.1f",
-            "tmin": ":.1f",
-            "lat": False,
-            "lon": False,
-        },
-        animation_frame="anio",
-        scope="south america",
-        title="Clasificación de Fase ENSO y Precipitación Anual por Estación",
-        color_discrete_map={
-            "El Niño": "#dc3545",
-            "La Niña": "#0d6efd",
-            "Neutral": "#28a745",
-        },
-        labels={
-            "Fase_ENSO": "Fase ENSO",
-            "precip": "Precip. Acumulada (mm)",
-            "tmax": "T° Máx Prom (°C)",
-            "tmin": "T° Mín Prom (°C)",
-            "anio": "Año",
-        },
-    )
-
-    fig_enso_map.update_geos(
-        showsubunits=True,
-        subunitcolor="#6c757d",
-        subunitwidth=1,
-        showcountries=True,
-        countrycolor="#343a40",
-        countrywidth=1.5,
-        showcoastlines=True,
-        showland=True,
-        landcolor="#f8f9fa",
-        fitbounds="locations",
-    )
-    fig_enso_map.update_layout(
-        height=600, margin={"r": 0, "t": 40, "l": 0, "b": 0}
-    )
-    st.plotly_chart(fig_enso_map, width="content")
-
 # 3. VISOR GEOGRÁFICO
 with tab3:
-  st.subheader("Ubicación Geográfica de Estaciones")
+  st.subheader("🗺️ Ubicación Geográfica de Estaciones")
+
   df_mapa = df_nomina_active.dropna(subset=["lat", "lon"]).copy()
-  df_mapa["Estado"] = df_mapa["nombre"].apply(
-      lambda x: (
-          "Estación Seleccionada" if x == estacion_sel else "Otras Estaciones"
-      )
-  )
 
-  fig_map = px.scatter_geo(
-      df_mapa,
-      lat="lat",
-      lon="lon",
-      hover_name="nombre",
-      hover_data=["provincia", "id_estacion"],
-      color="Estado",
-      color_discrete_map={
-          "Estación Seleccionada": "#dc3545",
-          "Otras Estaciones": "#0d6efd",
-      },
-      scope="south america",
-      center={"lat": info_estacion["lat"], "lon": info_estacion["lon"]},
-      projection="mercator",
-  )
+  if not df_mapa.empty:
+    df_mapa["Estado"] = df_mapa["nombre"].apply(
+        lambda x: (
+            "Estación Seleccionada" if x == estacion_sel else "Otras Estaciones"
+        )
+    )
 
-  fig_map.update_geos(
-      showsubunits=True,
-      subunitcolor="#6c757d",
-      subunitwidth=1.2,
-      showcountries=True,
-      countrycolor="#343a40",
-      countrywidth=1.5,
-      showcoastlines=True,
-      coastlinecolor="#343a40",
-      showland=True,
-      landcolor="#f8f9fa",
-      fitbounds="locations",
-  )
+    # Coordenadas exactas para centrar el mapa
+    lat_centro = float(info_estacion["lat"])
+    lon_centro = float(info_estacion["lon"])
 
-  fig_map.update_layout(
-      height=550, margin={"r": 0, "t": 10, "l": 0, "b": 0}
-  )
-  st.plotly_chart(fig_map, width="content")
+    fig_map = px.scatter_map(
+        df_mapa,
+        lat="lat",
+        lon="lon",
+        hover_name="nombre",
+        hover_data={"provincia": True, "id_estacion": True, "Estado": False},
+        color="Estado",
+        size=df_mapa["Estado"].apply(
+            lambda x: 14 if x == "Estación Seleccionada" else 8
+        ),
+        color_discrete_map={
+            "Estación Seleccionada": "#dc3545",  # Rojo
+            "Otras Estaciones": "#007bff",  # Azul
+        },
+        zoom=9,  # Nivel de zoom centrado en la estación
+        center={"lat": lat_centro, "lon": lon_centro},
+        map_style="open-street-map",  # Estilo detallado con límites de provincias
+        title=f"Ubicación de {estacion_sel}",
+    )
+
+    fig_map.update_layout(
+        height=600,
+        margin={"r": 0, "t": 40, "l": 0, "b": 0},
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1
+        ),
+    )
+
+    st.plotly_chart(fig_map, use_container_width=True)
+  else:
+    st.info("No hay coordenadas disponibles para mostrar el mapa.")
 
 # 4. TABLAS Y RESÚMENES (CON EXPORTACIÓN A CSV)
 with tab4:
