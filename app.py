@@ -480,7 +480,7 @@ with tab1:
         hovermode="x unified",
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_tmax_m, width='content')
+    st.plotly_chart(fig_tmax_m, use_container_width=True)
 
     # --- 2. GRÁFICO TEMPERATURA MÍNIMA PROMEDIO MENSUAL ---
     fig_tmin_m = px.line(
