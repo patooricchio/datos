@@ -407,11 +407,12 @@ if not df_estacion.empty:
 st.markdown("---")
 
 # --- PESTAÑAS PRINCIPALES ---
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📈 Series Diarias y Climatología",
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📈 Series y Climatología",
     "🗓️ ENSO e Interanual",
     "🗺️ Visor Geográfico",
     "📋 Tablas y Resúmenes",
+    "📅 Año Actual (Monitoreo)",
 ])
 
 # 1. SERIES Y CLIMATOLOGÍA MENSUAL
@@ -774,3 +775,228 @@ with tab4:
         mime="text/csv",
         key="btn_csv_diarios",
     )
+    # 5. MONITOREO DEL AÑO ACTUAL
+with tab5:
+  st.subheader("📅 Monitoreo del Año Actual vs. Récords Históricos")
+
+  if df_estacion_historico.empty:
+    st.warning("No hay datos históricos para esta estación.")
+  else:
+    # Determinar el último año disponible y el último mes registrado
+    anio_actual = df_estacion_historico["fecha"].dt.year.max()
+    df_anio_actual = df_estacion_historico[
+        df_estacion_historico["fecha"].dt.year == anio_actual
+    ].copy()
+
+    mes_actual_num = df_anio_actual["fecha"].dt.month.max()
+    nombre_mes_actual = dict_meses[mes_actual_num]
+
+    st.markdown(
+        f"**Año en monitoreo:** `{anio_actual}` | **Último mes evaluado:**"
+        f" `{nombre_mes_actual}`"
+    )
+
+    # Selector de Variable para los gráficos
+    var_monitoreo = st.selectbox(
+        "Seleccioná la variable para analizar el año actual:",
+        [
+            "Precipitación (mm)",
+            "Temperatura Máxima (°C)",
+            "Temperatura Mínima (°C)",
+        ],
+        key="var_monitoreo_sel",
+    )
+
+    # Agregación mensual del año actual
+    resumen_actual = (
+        df_anio_actual.groupby(df_anio_actual["fecha"].dt.month)
+        .agg(
+            precip_sum=("precip", "sum"),
+            tmax_mean=("tmax", "mean"),
+            tmin_mean=("tmin", "mean"),
+        )
+        .reset_index()
+        .rename(columns={"fecha": "mes_num"})
+    )
+
+    # Climatología histórica global
+    df_hist_all = df_estacion_historico.copy()
+    df_hist_all["anio"] = df_hist_all["fecha"].dt.year
+    df_hist_all["mes_num"] = df_hist_all["fecha"].dt.month
+
+    clim_historica = (
+        df_hist_all.groupby("mes_num")
+        .agg(
+            precip_clim=("precip", "mean"),
+            tmax_clim=("tmax", "mean"),
+            tmin_clim=("tmin", "mean"),
+        )
+        .reset_index()
+    )
+
+    col_var = (
+        "precip_sum"
+        if var_monitoreo == "Precipitación (mm)"
+        else (
+            "tmax_mean"
+            if var_monitoreo == "Temperatura Máxima (°C)"
+            else "tmin_mean"
+        )
+    )
+    col_clim = (
+        "precip_clim"
+        if var_monitoreo == "Precipitación (mm)"
+        else (
+            "tmax_clim"
+            if var_monitoreo == "Temperatura Máxima (°C)"
+            else "tmin_clim"
+        )
+    )
+
+    # --- GRÁFICO 1: EVOLUCIÓN MENSUAL DEL AÑO ACTUAL VS. MEDIA HISTÓRICA ---
+    fig_actual_line = go.Figure()
+
+    # Barras o líneas según la variable
+    if var_monitoreo == "Precipitación (mm)":
+      fig_actual_line.add_trace(
+          go.Bar(
+              x=resumen_actual["mes_num"],
+              y=resumen_actual[col_var],
+              name=f"Acumulado {anio_actual}",
+              marker_color="#0dcaf0",
+          )
+      )
+    else:
+      fig_actual_line.add_trace(
+          go.Scatter(
+              x=resumen_actual["mes_num"],
+              y=resumen_actual[col_var],
+              mode="lines+markers",
+              name=f"Promedio {anio_actual}",
+              line=dict(
+                  color=(
+                      "#dc3545"
+                      if var_monitoreo == "Temperatura Máxima (°C)"
+                      else "#0d6efd"
+                  ),
+                  width=3,
+              ),
+          )
+      )
+
+    # Media histórica de referencia
+    fig_actual_line.add_trace(
+        go.Scatter(
+            x=clim_historica["mes_num"],
+            y=clim_historica[col_clim],
+            mode="lines+markers",
+            name="Media Climatológica Histórica",
+            line=dict(color="#6c757d", width=2.5, dash="dash"),
+        )
+    )
+
+    t_vals = list(dict_meses.keys())
+    t_text = [dict_meses[m][:3] for m in t_vals]
+
+    fig_actual_line.update_layout(
+        title=(
+            f"Evolución Mensual de {var_monitoreo} en {anio_actual} vs. Media"
+            " Histórica"
+        ),
+        xaxis=dict(tickmode="array", tickvals=t_vals, ticktext=t_text),
+        hovermode="x unified",
+        margin=dict(l=20, r=20, t=50, b=20),
+    )
+    st.plotly_chart(fig_actual_line, use_container_width=True)
+
+    st.markdown("---")
+
+    # --- GRÁFICO 2: COMPARACIÓN DEL MES ACTUAL VS. RÉCORDS HISTÓRICOS ---
+    st.subheader(
+        f"🔍 Comparativa del Mes de {nombre_mes_actual} contra Récords"
+        " Históricos"
+    )
+
+    # Agrupación por año para el mes actual
+    df_mes_historico = df_hist_all[
+        df_hist_all["mes_num"] == mes_actual_num
+    ].copy()
+
+    if var_monitoreo == "Precipitación (mm)":
+      agg_func = "sum"
+      col_val = "precip"
+      lbl_min = "Más Seco"
+      lbl_max = "Más Húmedo"
+      unidades = "mm"
+    elif var_monitoreo == "Temperatura Máxima (°C)":
+      agg_func = "mean"
+      col_val = "tmax"
+      lbl_min = "Más Frío (T° Máx)"
+      lbl_max = "Más Cálido (T° Máx)"
+      unidades = "°C"
+    else:
+      agg_func = "mean"
+      col_val = "tmin"
+      lbl_min = "Más Frío (T° Mín)"
+      lbl_max = "Más Cálido (T° Mín)"
+      unidades = "°C"
+
+    resumen_mes_hist = (
+        df_mes_historico.groupby("anio")[col_val]
+        .agg(agg_func)
+        .dropna()
+        .reset_index()
+    )
+
+    if not resumen_mes_hist.empty:
+      # Récord Mínimo y Máximo Histórico
+      row_min = resumen_mes_hist.loc[resumen_mes_hist[col_val].idxmin()]
+      row_max = resumen_mes_hist.loc[resumen_mes_hist[col_val].idxmax()]
+
+      # Valor del año actual
+      val_actual_mes = (
+          resumen_actual[resumen_actual["mes_num"] == mes_actual_num][
+              col_var
+          ].values[0]
+          if mes_actual_num in resumen_actual["mes_num"].values
+          else 0
+      )
+
+      # Dataframe para graficar la comparación
+      df_records = pd.DataFrame({
+          "Categoría": [
+              f"Récord {lbl_min}\n({int(row_min['anio'])})",
+              f"Actual {nombre_mes_actual}\n({anio_actual})",
+              f"Récord {lbl_max}\n({int(row_max['anio'])})",
+          ],
+          "Valor": [row_min[col_val], val_actual_mes, row_max[col_val]],
+          "Tipo": ["Mínimo Histórico", "Año Actual", "Máximo Histórico"],
+      })
+
+      fig_comp_records = px.bar(
+          df_records,
+          x="Categoría",
+          y="Valor",
+          color="Tipo",
+          text_auto=".1f",
+          title=(
+              f"Comparativa de {nombre_mes_actual}: {anio_actual} vs."
+              f" Extremos Históricos ({unidades})"
+          ),
+          color_discrete_map={
+              "Mínimo Histórico": "#0d6efd",
+              "Año Actual": "#ffc107",
+              "Máximo Histórico": "#dc3545",
+          },
+          labels={"Valor": f"{var_monitoreo}", "Categoría": "Período"},
+      )
+
+      fig_comp_records.update_traces(
+          textposition="outside", textfont_size=13, textfont_weight="bold"
+      )
+      fig_comp_records.update_layout(
+          showlegend=False,
+          margin=dict(l=20, r=20, t=50, b=20),
+          yaxis_title=f"{var_monitoreo}",
+      )
+      st.plotly_chart(fig_comp_records, width='content')
