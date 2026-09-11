@@ -133,14 +133,34 @@ def load_data():
   )
   df_conv["fecha"] = pd.to_datetime(df_conv["fecha"])
 
+  # Normalización defensiva del campo 'nombre'
+  renom_nomina = {
+      "localidad": "nombre",
+      "estacion": "nombre",
+      "latitud": "lat",
+      "longitud": "lon",
+      "altitud": "altura",
+  }
+  df_nomina_conv = df_nomina_conv.rename(
+      columns={
+          k: v for k, v in renom_nomina.items() if k in df_nomina_conv.columns
+      }
+  )
+
+  if "provincia" not in df_nomina_conv.columns:
+    df_nomina_conv["provincia"] = "Sin Especificar"
+
   for col in ["nombre", "provincia"]:
     if col in df_conv.columns:
       df_conv = df_conv.drop(columns=[col])
 
+  cols_merge_conv = [
+      c
+      for c in ["id_estacion", "nombre", "provincia", "lat", "lon", "altura"]
+      if c in df_nomina_conv.columns
+  ]
   df_conv = df_conv.merge(
-      df_nomina_conv[["id_estacion", "nombre", "provincia"]],
-      on="id_estacion",
-      how="left",
+      df_nomina_conv[cols_merge_conv], on="id_estacion", how="left"
   )
 
   df_auto = pd.DataFrame()
@@ -156,13 +176,13 @@ def load_data():
       col_lower = col.strip().lower()
       if col_lower in ["id", "id_estacion"]:
         renombrar_dict[col] = "id_estacion"
-      elif col_lower == "nombre":
+      elif col_lower in ["nombre", "localidad", "estacion"]:
         renombrar_dict[col] = "nombre"
       elif col_lower == "provincia":
         renombrar_dict[col] = "provincia"
-      elif col_lower == "latitud":
+      elif col_lower in ["latitud", "lat"]:
         renombrar_dict[col] = "lat"
-      elif col_lower == "longitud":
+      elif col_lower in ["longitud", "lon"]:
         renombrar_dict[col] = "lon"
 
     df_nomina_emas = df_nomina_emas.rename(columns=renombrar_dict)
@@ -170,6 +190,10 @@ def load_data():
         limpiar_id
     )
 
+    if "nombre" not in df_nomina_emas.columns:
+      df_nomina_emas["nombre"] = df_nomina_emas["id_estacion"]
+    if "provincia" not in df_nomina_emas.columns:
+      df_nomina_emas["provincia"] = "Sin Especificar"
     if "altura" not in df_nomina_emas.columns:
       df_nomina_emas["altura"] = 0
 
@@ -187,10 +211,13 @@ def load_data():
         df_auto = df_auto.drop(columns=[col])
 
     if not df_nomina_emas.empty:
+      cols_merge_emas = [
+          c
+          for c in ["id_estacion", "nombre", "provincia", "lat", "lon", "altura"]
+          if c in df_nomina_emas.columns
+      ]
       df_auto = df_auto.merge(
-          df_nomina_emas[["id_estacion", "nombre", "provincia"]],
-          on="id_estacion",
-          how="left",
+          df_nomina_emas[cols_merge_emas], on="id_estacion", how="left"
       )
 
   return df_conv, df_nomina_conv, df_auto, df_nomina_emas
@@ -459,7 +486,7 @@ with tab1:
         ),
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_tmax, width="content")
+    st.plotly_chart(fig_tmax, use_container_width=True)
 
     # Gráfico Tmin
     fig_tmin = go.Figure()
@@ -490,7 +517,7 @@ with tab1:
         ),
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_tmin, width="content")
+    st.plotly_chart(fig_tmin, use_container_width=True)
 
     # Gráfico Precipitación Diaria
     fig_precip = go.Figure()
@@ -509,7 +536,7 @@ with tab1:
         yaxis_title="Lluvia Diaria (mm)",
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_precip, width="content")
+    st.plotly_chart(fig_precip, use_container_width=True)
 
 # 2. ENSO Y MAPA INTERANUAL POR AÑO
 with tab2:
@@ -524,22 +551,25 @@ with tab2:
         df_enso["anio"].astype(str) + " (" + df_enso["Fase_ENSO"] + ")"
     )
 
-    # --- NUEVO GRÁFICO: PRECIPITACIÓN TOTAL ANUAL SEGÚN FASE ENSO ---
+    # --- PRECIPITACIÓN TOTAL ANUAL SEGÚN FASE ENSO (ORDENADO CRONOLÓGICAMENTE) ---
     df_precip_anual = (
         df_enso.groupby(["anio", "Fase_ENSO"])["precip"]
         .sum(min_count=1)
         .reset_index()
-        .sort_values("anio")
+        .sort_values("anio", ascending=True)
     )
+
+    df_precip_anual["anio_str"] = df_precip_anual["anio"].astype(str)
+    anios_ordenados_str = df_precip_anual["anio_str"].unique().tolist()
 
     fig_precip_enso = px.bar(
         df_precip_anual,
-        x="anio",
+        x="anio_str",
         y="precip",
         color="Fase_ENSO",
         title="Precipitación Total Anual según Clasificación ENSO (Orden Cronológico)",
         labels={
-            "anio": "Año",
+            "anio_str": "Año",
             "precip": "Precipitación Acumulada (mm)",
             "Fase_ENSO": "Fase ENSO",
         },
@@ -549,12 +579,18 @@ with tab2:
             "Neutral": "#28a745",
         },
     )
-    fig_precip_enso.update_layout(xaxis=dict(type="category"))
-    st.plotly_chart(fig_precip_enso, width="content")
+    fig_precip_enso.update_layout(
+        xaxis=dict(
+            type="category",
+            categoryorder="array",
+            categoryarray=anios_ordenados_str,
+        )
+    )
+    st.plotly_chart(fig_precip_enso, use_container_width=True)
 
     st.markdown("---")
 
-    # 1. Gráfico de Evolución Mensual
+    # --- GRÁFICO DE EVOLUCIÓN MENSUAL COMPARATIVA POR AÑO Y FASE ENSO ---
     var_enso = st.selectbox(
         "Seleccioná la variable a comparar por año y Fase ENSO:",
         [
@@ -589,11 +625,18 @@ with tab2:
       col_y = "tmin"
       title_y = "T° Mínima Promedio Mensual (°C)"
 
+    # Orden cronológico estricto (de más viejo a más reciente)
+    df_m = df_m.sort_values(["anio", "mes_num"], ascending=[True, True])
+    orden_anos_fase = (
+        df_m[["anio", "Año_Fase"]].drop_duplicates().sort_values("anio")["Año_Fase"].tolist()
+    )
+
     fig_interanual = px.line(
         df_m,
         x="mes_num",
         y=col_y,
         color="Año_Fase",
+        category_orders={"Año_Fase": orden_anos_fase},
         markers=True,
         title=f"Evolución Mensual Comparativa por Año y Fase ENSO - {var_enso}",
         labels={
@@ -608,7 +651,7 @@ with tab2:
         xaxis=dict(tickmode="array", tickvals=t_vals, ticktext=t_text),
         hovermode="x unified",
     )
-    st.plotly_chart(fig_interanual, width="content")
+    st.plotly_chart(fig_interanual, use_container_width=True)
 
   st.markdown("---")
   st.subheader("🗺️ Mapa Interanual por Estación catalogado por Fase ENSO")
@@ -625,24 +668,20 @@ with tab2:
       ]
       .agg({"precip": "sum", "tmax": "mean", "tmin": "mean"})
       .reset_index()
+      .sort_values("anio", ascending=True)
   )
 
+  cols_map_merge = [
+      c
+      for c in ["id_estacion", "nombre", "provincia", "lat", "lon"]
+      if c in df_nomina_active.columns
+  ]
   df_map_anual = df_map_anual.merge(
-      df_nomina_active[["id_estacion", "nombre", "provincia", "lat", "lon"]],
-      on="id_estacion",
-      how="inner",
+      df_nomina_active[cols_map_merge], on="id_estacion", how="inner"
   ).dropna(subset=["lat", "lon"])
 
   if not df_map_anual.empty:
     df_map_anual["Año_Str"] = df_map_anual["anio"].astype(str)
-    df_map_anual["Label_Completa"] = (
-        df_map_anual["nombre"]
-        + " | "
-        + df_map_anual["Fase_ENSO"]
-        + " ("
-        + df_map_anual["Año_Str"]
-        + ")"
-    )
 
     fig_enso_map = px.scatter_geo(
         df_map_anual,
@@ -693,7 +732,7 @@ with tab2:
     fig_enso_map.update_layout(
         height=600, margin={"r": 0, "t": 40, "l": 0, "b": 0}
     )
-    st.plotly_chart(fig_enso_map, width="content")
+    st.plotly_chart(fig_enso_map, use_container_width=True)
 
 # 3. VISOR GEOGRÁFICO
 with tab3:
@@ -738,7 +777,7 @@ with tab3:
   fig_map.update_layout(
       height=550, margin={"r": 0, "t": 10, "l": 0, "b": 0}
   )
-  st.plotly_chart(fig_map, width="content")
+  st.plotly_chart(fig_map, use_container_width=True)
 
 # 4. TABLAS Y RESÚMENES (CON EXPORTACIÓN A CSV)
 with tab4:
@@ -767,7 +806,7 @@ with tab4:
         .reset_index()
     )
 
-    st.dataframe(resumen_mensual, width="content", hide_index=True)
+    st.dataframe(resumen_mensual, use_container_width=True, hide_index=True)
     csv_mensual = resumen_mensual.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="📥 Descargar Resumen Mensual (CSV)",
@@ -791,7 +830,7 @@ with tab4:
         .reset_index()
     )
 
-    st.dataframe(precip_anual_tabla, width="content", hide_index=True)
+    st.dataframe(precip_anual_tabla, use_container_width=True, hide_index=True)
     csv_anual = precip_anual_tabla.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="📥 Descargar Precipitación Anual (CSV)",
@@ -818,7 +857,7 @@ with tab4:
         errors="ignore",
     )
 
-    st.dataframe(df_export_diarios, width="content", hide_index=True)
+    st.dataframe(df_export_diarios, use_container_width=True, hide_index=True)
     csv_diarios = df_export_diarios.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="📥 Descargar Datos Diarios Crudos (CSV)",
