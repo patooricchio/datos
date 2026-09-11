@@ -510,7 +510,7 @@ with tab1:
         hovermode="x unified",
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_tmin_m, use_container_width=True)
+    st.plotly_chart(fig_tmin_m, width='content')
 
     # --- 3. GRÁFICO PRECIPITACIÓN ACUMULADA MENSUAL ---
     fig_precip_m = px.bar(
@@ -531,7 +531,7 @@ with tab1:
         hovermode="x unified",
         margin=dict(l=20, r=20, t=50, b=20),
     )
-    st.plotly_chart(fig_precip_m, use_container_width=True)
+    st.plotly_chart(fig_precip_m, width='content')
 
 # 2. ENSO Y ANÁLISIS INTERANUAL
 with tab2:
@@ -683,7 +683,7 @@ with tab3:
         ),
     )
 
-    st.plotly_chart(fig_map, use_container_width=True)
+    st.plotly_chart(fig_map, width='content')
   else:
     st.info("No hay coordenadas disponibles para mostrar el mapa.")
 
